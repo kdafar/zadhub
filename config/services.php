@@ -39,7 +39,8 @@ return [
         'api_token' => env('WHATSAPP_API_TOKEN'),
         'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
-        'flow_id' => env('WHATSAPP_FLOW_ID'), // We will get this after approving our flow
+        'fake' => env('WHATSAPP_FAKE', true),
+        'flow_id' => env('WHATSAPP_FLOW_ID', 'FLOW-TEST-123'),
     ],
 
 ];

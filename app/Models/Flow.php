@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Flow extends Model
 {
@@ -12,8 +14,9 @@ class Flow extends Model
 
     protected $fillable = [
         'provider_id',
-        'flow_template_id',
-        'live_version_id',
+        'name',
+        'is_active',
+        'meta',
         'trigger_keyword',
     ];
 
@@ -22,13 +25,15 @@ class Flow extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function template(): BelongsTo
+    public function liveVersion(): HasOne
     {
-        return $this->belongsTo(FlowTemplate::class, 'flow_template_id');
+        return $this->hasOne(FlowVersion::class, 'flow_id')
+            ->where('status', 'published')
+            ->orderByDesc('published_at'); // or ->orderByDesc('version')
     }
 
-    public function liveVersion(): BelongsTo
+    public function versions(): HasMany
     {
-        return $this->belongsTo(FlowVersion::class, 'live_version_id');
+        return $this->hasMany(FlowVersion::class, 'flow_id');
     }
 }

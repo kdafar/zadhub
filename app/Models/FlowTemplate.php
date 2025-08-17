@@ -2,31 +2,54 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FlowTemplate extends Model
 {
-    use HasFactory;
+    protected $fillable = [
+        'service_id',
+        'name',
+        'slug',
+        'description',
+        'schema',     // JSON definition of screens/components
+        'is_active',
+        'versioning_strategy', // optional
+        'meta',
+    ];
 
-    protected $fillable = ['service_id', 'name', 'is_active', 'live_version_id'];
+    protected $casts = [
+        'schema' => 'array',
+        'is_active' => 'boolean',
+        'meta' => 'array',
+    ];
 
-    protected $casts = ['is_active' => 'boolean'];
-
-    public function service(): BelongsTo
+    public function service()
     {
         return $this->belongsTo(Service::class);
     }
 
-    public function versions(): HasMany
+    public function versions()
     {
-        return $this->hasMany(FlowVersion::class)->orderBy('version_number', 'desc');
+        return $this->hasMany(FlowVersion::class);
     }
 
-    public function liveVersion(): BelongsTo
+    public function providerPins()
     {
-        return $this->belongsTo(FlowVersion::class, 'live_version_id');
+        return $this->hasMany(ProviderFlowPin::class);
+    }
+
+    public function providerOverrides()
+    {
+        return $this->hasMany(ProviderFlowOverride::class);
+    }
+
+    public function latestVersion()
+    {
+        return $this->belongsTo(\App\Models\FlowVersion::class, 'latest_version_id');
+    }
+
+    public function pins()
+    {
+        return $this->hasMany(\App\Models\ProviderFlowPin::class);
     }
 }
