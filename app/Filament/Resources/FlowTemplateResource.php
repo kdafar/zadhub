@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\FlowTemplateResource\Pages;
 use App\Filament\Resources\FlowTemplateResource\RelationManagers\FlowVersionsRelationManager;
 use App\Models\FlowTemplate;
-use App\Models\Service;
+use App\Models\ServiceType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -32,9 +32,9 @@ class FlowTemplateResource extends Resource
             Forms\Components\Section::make('Template')
                 ->columns(3)
                 ->schema([
-                    Forms\Components\Select::make('service_id')
-                        ->label('Service')
-                        ->options(Service::query()->orderBy('name_en')->pluck('name_en', 'id'))
+                    Forms\Components\Select::make('service_type_id')
+                        ->label('Service Type')
+                        ->options(ServiceType::query()->orderBy('name_en')->pluck('name_en', 'id'))
                         ->searchable()
                         ->required(),
                     Forms\Components\TextInput::make('name')
@@ -77,7 +77,7 @@ class FlowTemplateResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('service.name_en')->label('Service')->sortable(),
+                Tables\Columns\TextColumn::make('serviceType.name_en')->label('Service Type')->sortable(),
                 Tables\Columns\TextColumn::make('slug')->toggleable(),
                 Tables\Columns\TextColumn::make('latestVersion.version')
                     ->label('Latest')

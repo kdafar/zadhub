@@ -11,7 +11,7 @@ use App\Filament\Resources\ProviderResource\RelationManagers\ProviderRateLimitsR
 use App\Filament\Resources\ProviderResource\RelationManagers\ProviderRoutingRulesRelationManager;
 use App\Filament\Resources\ProviderResource\RelationManagers\ProviderWebhookLogsRelationManager;
 use App\Models\Provider;
-use App\Models\Service;
+use App\Models\ServiceType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -39,9 +39,9 @@ class ProviderResource extends Resource
             Forms\Components\Section::make('Identity')
                 ->columns(3)
                 ->schema([
-                    Forms\Components\Select::make('service_id')
-                        ->label('Service')
-                        ->options(Service::query()->orderBy('name_en')->pluck('name_en', 'id'))
+                    Forms\Components\Select::make('service_type_id')
+                        ->label('Service Type')
+                        ->options(ServiceType::query()->orderBy('name_en')->pluck('name_en', 'id'))
                         ->searchable()
                         ->required(),
                     Forms\Components\TextInput::make('name')
@@ -103,8 +103,8 @@ class ProviderResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('service.name_en')
-                    ->label('Service')
+                Tables\Columns\TextColumn::make('serviceType.name_en')
+                    ->label('Service Type')
                     ->sortable()
                     ->toggleable(),
                 Tables\Columns\BadgeColumn::make('status')
@@ -129,9 +129,9 @@ class ProviderResource extends Resource
                     ->label('Updated'),
             ])
             ->filters([
-                SelectFilter::make('service_id')
-                    ->label('Service')
-                    ->relationship('service', 'name_en')
+                SelectFilter::make('service_type_id')
+                    ->label('Service Type')
+                    ->relationship('serviceType', 'name_en')
                     ->searchable(),
                 SelectFilter::make('status')
                     ->options([

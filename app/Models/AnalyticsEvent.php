@@ -9,7 +9,7 @@ class AnalyticsEvent extends Model
     protected $fillable = [
         'whatsapp_session_id',
         'provider_id',
-        'service_id',
+        'service_type_id',
         'name',       // e.g. flow_started, screen_view, error, order_submitted
         'properties', // JSON payload
         'occurred_at',
@@ -30,8 +30,8 @@ class AnalyticsEvent extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function service()
+    public function serviceType()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ServiceType::class, 'service_type_id');
     }
 }

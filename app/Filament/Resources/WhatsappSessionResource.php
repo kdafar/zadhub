@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\WhatsappSessionResource\Pages;
 use App\Models\FlowVersion;
 use App\Models\Provider;
-use App\Models\Service;
+use App\Models\ServiceType;
 use App\Models\WhatsappSession;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -51,10 +51,10 @@ class WhatsappSessionResource extends Resource
                         ->options(Provider::query()->orderBy('name')->pluck('name', 'id'))
                         ->required(),
 
-                    Forms\Components\Select::make('service_id')
-                        ->label('Service')
+                    Forms\Components\Select::make('service_type_id')
+                        ->label('Service Type')
                         ->native(false)->searchable()->preload()
-                        ->options(Service::query()->orderBy('name_en')->pluck('name_en', 'id')),
+                        ->options(ServiceType::query()->orderBy('name_en')->pluck('name_en', 'id')),
                 ]),
 
             Forms\Components\Section::make('Flow')
@@ -142,7 +142,7 @@ class WhatsappSessionResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('phone')->label('Phone')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('provider.name')->label('Provider')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('service.name_en')->label('Service')->sortable(),
+                Tables\Columns\TextColumn::make('serviceType.name_en')->label('Service Type')->sortable(),
                 Tables\Columns\TextColumn::make('status')->badge()->sortable(),
                 Tables\Columns\TextColumn::make('locale')->sortable(),
                 Tables\Columns\TextColumn::make('flowVersionLabel')
@@ -164,9 +164,9 @@ class WhatsappSessionResource extends Resource
                     ->label('Provider')
                     ->options(\App\Models\Provider::query()->orderBy('name')->pluck('name', 'id')),
 
-                Tables\Filters\SelectFilter::make('service_id')
-                    ->label('Service')
-                    ->options(\App\Models\Service::query()->orderBy('name_en')->pluck('name_en', 'id')),
+                Tables\Filters\SelectFilter::make('service_type_id')
+                    ->label('Service Type')
+                    ->options(\App\Models\ServiceType::query()->orderBy('name_en')->pluck('name_en', 'id')),
 
                 Tables\Filters\SelectFilter::make('status')
                     ->multiple()

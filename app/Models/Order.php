@@ -9,7 +9,7 @@ class Order extends Model
     protected $fillable = [
         'session_id',
         'provider_id',
-        'service_id',
+        'service_type_id',
         'external_order_id',
         'status',
         'subtotal',
@@ -24,9 +24,9 @@ class Order extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function service()
+    public function serviceType()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ServiceType::class, 'service_type_id');
     }
 
     // Your sessions table is "whatsapp_sessions", column is session_id

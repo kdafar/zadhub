@@ -8,7 +8,7 @@ class AdapterApiLog extends Model
 {
     protected $fillable = [
         'provider_id',
-        'service_id',
+        'service_type_id',
         'adapter',   // e.g. restaurants, telecom, hospital
         'operation', // e.g. list_menu, get_balance, book_appointment
         'request',
@@ -31,8 +31,8 @@ class AdapterApiLog extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function service()
+    public function serviceType()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ServiceType::class, 'service_type_id');
     }
 }

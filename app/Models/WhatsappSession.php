@@ -13,7 +13,7 @@ class WhatsappSession extends Model
         'phone',
         'status',
         'locale',
-        'service_id',
+        'service_type_id',
         'provider_id',
         'flow_version_id',
         'current_screen',
@@ -41,9 +41,9 @@ class WhatsappSession extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function service()
+    public function serviceType()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ServiceType::class, 'service_type_id');
     }
 
     public function flowVersion()

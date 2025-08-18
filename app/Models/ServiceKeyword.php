@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ServiceKeyword extends Model
 {
     protected $fillable = [
-        'service_id',
+        'service_type_id',
         'keyword',
         'locale',
         'is_active',
@@ -19,8 +19,8 @@ class ServiceKeyword extends Model
         'meta' => 'array',
     ];
 
-    public function service()
+    public function serviceType()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ServiceType::class, 'service_type_id');
     }
 }

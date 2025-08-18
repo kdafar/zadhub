@@ -32,10 +32,21 @@ class Dropdown extends FlowComponent
 
     public static function getValidationRules(array $componentData): array
     {
+        $rules = [];
         if ($componentData['is_required'] ?? false) {
-            return [$componentData['name'] => ['required']];
+            $rules[] = 'required';
         }
 
-        return [];
+        $options = $componentData['options'] ?? [];
+        if (! empty($options)) {
+            $allowedValues = array_keys($options);
+            $rules[] = \Illuminate\Validation\Rule::in($allowedValues);
+        }
+
+        if (empty($rules)) {
+            return [];
+        }
+
+        return [$componentData['name'] => $rules];
     }
 }

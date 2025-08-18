@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class FlowTemplate extends Model
 {
     protected $fillable = [
-        'service_id',
+        'service_type_id',
         'name',
         'slug',
         'description',
@@ -23,9 +23,9 @@ class FlowTemplate extends Model
         'meta' => 'array',
     ];
 
-    public function service()
+    public function serviceType()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ServiceType::class, 'service_type_id');
     }
 
     public function versions()

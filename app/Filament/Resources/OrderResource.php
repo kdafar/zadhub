@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Models\Provider;
-use App\Models\Service;
+use App\Models\ServiceType;
 use App\Models\WhatsappSession;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -47,9 +47,9 @@ class OrderResource extends Resource
                         ->label('Provider')->native(false)->searchable()->preload()
                         ->options(Provider::query()->orderBy('name')->pluck('name', 'id'))->required(),
 
-                    Forms\Components\Select::make('service_id')
-                        ->label('Service')->native(false)->searchable()->preload()
-                        ->options(Service::query()->orderBy('name_en')->pluck('name_en', 'id'))
+                    Forms\Components\Select::make('service_type_id')
+                        ->label('Service Type')->native(false)->searchable()->preload()
+                        ->options(ServiceType::query()->orderBy('name_en')->pluck('name_en', 'id'))
                         ->required(),
 
                     Forms\Components\TextInput::make('external_order_id')
@@ -104,7 +104,7 @@ class OrderResource extends Resource
         return $table->columns([
             Tables\Columns\TextColumn::make('external_order_id')->label('Order #')->searchable()->sortable(),
             Tables\Columns\TextColumn::make('provider.name')->label('Provider')->searchable()->sortable(),
-            Tables\Columns\TextColumn::make('service.name_en')->label('Service')->sortable(),
+            Tables\Columns\TextColumn::make('serviceType.name_en')->label('Service Type')->sortable(),
             Tables\Columns\TextColumn::make('whatsappSession.customer_phone_number')->label('Phone')->sortable(),
             Tables\Columns\TextColumn::make('status')->badge()->sortable(),
             Tables\Columns\TextColumn::make('total')->numeric(3)->sortable()->weight('bold'),
@@ -114,8 +114,8 @@ class OrderResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('provider_id')->label('Provider')
                     ->options(Provider::query()->orderBy('name')->pluck('name', 'id')),
-                Tables\Filters\SelectFilter::make('service_id')->label('Service')
-                    ->options(Service::query()->orderBy('name_en')->pluck('name_en', 'id')),
+                Tables\Filters\SelectFilter::make('service_type_id')->label('Service Type')
+                    ->options(ServiceType::query()->orderBy('name_en')->pluck('name_en', 'id')),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

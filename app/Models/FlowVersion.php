@@ -21,7 +21,7 @@ class FlowVersion extends Model
         'changelog',
         'published_at',
         'meta',
-        'service_id',
+        'service_type_id',
         'provider_id',
         'flow_id',
     ];
@@ -40,9 +40,9 @@ class FlowVersion extends Model
         return $this->belongsTo(FlowTemplate::class, 'flow_template_id');
     }
 
-    public function service()
+    public function serviceType()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ServiceType::class, 'service_type_id');
     }
 
     public function provider()
@@ -53,6 +53,11 @@ class FlowVersion extends Model
     public function flow()
     {
         return $this->belongsTo(Flow::class, 'flow_id');
+    }
+
+    public function metaFlow()
+    {
+        return $this->hasOne(MetaFlow::class);
     }
 
     // 🔎 Scopes

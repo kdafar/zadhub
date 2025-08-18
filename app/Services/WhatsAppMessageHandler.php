@@ -13,6 +13,12 @@ use Illuminate\Support\Str;
 
 class WhatsAppMessageHandler
 {
+    public function __construct(
+        protected WhatsAppApiServiceFactory $apiServiceFactory,
+        protected FlowRenderer $flowRenderer
+    ) {
+    }
+
     public function process(array $payload): void
     {
         Log::info('Incoming WhatsApp Payload:', $payload);
@@ -27,26 +33,24 @@ class WhatsAppMessageHandler
 
         $provider = Provider::where('whatsapp_phone_number_id', $phoneNumberId)->first();
         if (! $provider) {
+            Log::warning('No provider found for this phone number ID.', ['whatsapp_phone_number_id' => $phoneNumberId]);
+
             return;
         }
 
-        // ⚠️ use 'phone' column (not customer_phone_number)
         $session = WhatsappSession::firstOrCreate(
             ['phone' => $from, 'provider_id' => $provider->id],
             ['status' => 'active', 'locale' => 'en']
         );
 
-        // last seen
         $session->update(['last_interacted_at' => now()]);
 
-        // 1) Flow reply takes precedence
         if (isset($messageValue['interactive']['nfm_reply'])) {
             $this->handleFlowReply($session, $messageValue['interactive']['nfm_reply']);
 
             return;
         }
 
-        // 2) Trigger keywords
         $incomingText = strtolower(trim($messageValue['text']['body'] ?? ''));
         if ($incomingText === '') {
             return;
@@ -64,9 +68,15 @@ class WhatsAppMessageHandler
 
     private function startFlow(WhatsappSession $session, Flow $flow): void
     {
-        $liveVersion = $flow->liveVersion()->first(); // latest published
+        $liveVersion = $flow->liveVersion()->with('metaFlow')->first();
         if (! $liveVersion) {
             Log::error("Flow ID {$flow->id} has no published version.");
+
+            return;
+        }
+
+        if (! $liveVersion->metaFlow?->meta_flow_id) {
+            Log::error("Flow Version ID {$liveVersion->id} has not been published to Meta and is missing a `meta_flow_id`.");
 
             return;
         }
@@ -80,9 +90,8 @@ class WhatsAppMessageHandler
 
         $first = $screens[0];
 
-        // align to your session columns
         $session->update([
-            'service_id' => $flow->provider?->service_id,
+            'service_type_id' => $flow->provider?->service_type_id,
             'flow_version_id' => $liveVersion->id,
             'current_screen' => $first['id'] ?? null,
             'status' => 'active',
@@ -100,10 +109,7 @@ class WhatsAppMessageHandler
 
     private function handleFlowReply(WhatsappSession $session, array $replyData): void
     {
-        // load version by flow_version_id
-        $version = $session->flow_version_id
-            ? FlowVersion::find($session->flow_version_id)
-            : null;
+        $version = $session->flowVersion()->with('metaFlow')->first();
 
         if (! $version) {
             Log::warning('No flow_version for session', ['session_id' => $session->id]);
@@ -122,7 +128,6 @@ class WhatsAppMessageHandler
             return;
         }
 
-        // Build validation rules from children
         $rules = [];
         foreach ($currentScreen['children'] ?? [] as $component) {
             $class = $this->getComponentClass($component['type'] ?? '');
@@ -139,11 +144,9 @@ class WhatsAppMessageHandler
             return;
         }
 
-        // Save into context (JSON column)
         $ctx = $session->context ?? [];
         $session->update(['context' => array_merge($ctx, $responseData)]);
 
-        // Decide next screen id (choice → static → sequential)
         $nextId = $this->resolveNextScreenId($currentScreen, $screens, $responseData);
 
         if ($nextId) {
@@ -157,30 +160,33 @@ class WhatsAppMessageHandler
             }
         }
 
-        // No next → end
         $this->endFlow($session, 'Thank you! We have received your information.');
     }
 
     private function executeScreen(WhatsappSession $session, array $screenConfig, ?string $errorMessage = null): void
     {
         $provider = $session->provider;
-        if (empty($provider->whatsapp_phone_number_id)) {
-            Log::error("Provider {$provider->id} missing WhatsApp number id.");
+        if (empty($provider->whatsapp_phone_number_id) || empty($provider->api_token)) {
+            Log::error("Provider {$provider->id} is missing WhatsApp credentials.");
 
             return;
         }
 
-        // If you want to skip real sends in staging, gate it here by config(...)
-        $apiService = new WhatsAppApiService($provider->api_token ?? '', $provider->whatsapp_phone_number_id);
-        $renderer = new FlowRenderer;
+        $version = $session->flowVersion;
+        $metaFlowId = $version->metaFlow?->meta_flow_id;
 
-        // pass CONTEXT (your schema), not data
-        $screenData = $renderer->renderScreen($screenConfig, $session->context ?? [], $errorMessage);
+        if (! $metaFlowId) {
+            Log::error("Flow version ID {$version->id} is not published to Meta.");
 
-        // Send WhatsApp Flow message (adjust if your service differs)
+            return;
+        }
+
+        $apiService = $this->apiServiceFactory->make($provider);
+        $screenData = $this->flowRenderer->renderScreen($screenConfig, $session->context ?? [], $errorMessage);
+
         $apiService->sendFlowMessage(
-            $session->phone,                         // you store phone in 'phone'
-            (string) config('services.whatsapp.flow_id'),
+            $session->phone,
+            $metaFlowId,
             (string) Str::uuid(),
             $screenData
         );
@@ -190,8 +196,12 @@ class WhatsAppMessageHandler
     {
         if ($message) {
             $provider = $session->provider;
-            $apiService = new WhatsAppApiService($provider->api_token ?? '', $provider->whatsapp_phone_number_id);
-            $apiService->sendTextMessage($session->phone, $message);
+            if (empty($provider->whatsapp_phone_number_id) || empty($provider->api_token)) {
+                Log::warning("Provider {$provider->id} is missing WhatsApp credentials. Cannot send end-of-flow message.");
+            } else {
+                $apiService = $this->apiServiceFactory->make($provider);
+                $apiService->sendTextMessage($session->phone, $message);
+            }
         }
 
         $this->pushHistory($session, 'completed');
@@ -203,12 +213,6 @@ class WhatsAppMessageHandler
         ]);
     }
 
-    /**
-     * Decide next screen id using:
-     * 1) per-choice map: $current['data']['next_on_choice'][<value>]
-     * 2) static id:      $current['data']['next_screen_id']
-     * 3) sequential fallback: next in $screens[]
-     */
     private function resolveNextScreenId(array $current, array $screens, array $responseData): ?string
     {
         $choiceMap = $current['data']['next_on_choice'] ?? null;

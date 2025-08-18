@@ -6,7 +6,7 @@ use App\Filament\Resources\FlowVersionResource\Pages;
 use App\Models\FlowVersion;
 use App\Models\MetaFlow;
 use App\Models\Provider;
-use App\Models\Service;
+use App\Models\ServiceType;
 use App\Services\Meta\MetaFlowsService;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -28,8 +28,8 @@ class FlowVersionResource extends Resource
         return $form->schema([
             Forms\Components\Grid::make(3)->schema([
                 Forms\Components\TextInput::make('name')->maxLength(120),
-                Forms\Components\Select::make('service_id')->label('Service')
-                    ->options(Service::query()->pluck('name', 'id'))->searchable(),
+                Forms\Components\Select::make('service_type_id')->label('Service Type')
+                    ->options(ServiceType::query()->pluck('name', 'id'))->searchable(),
                 Forms\Components\Select::make('provider_id')->label('Provider')
                     ->options(Provider::query()->pluck('name', 'id'))->searchable(),
             ]),
@@ -50,7 +50,7 @@ class FlowVersionResource extends Resource
         return $table->columns([
             Tables\Columns\TextColumn::make('id')->sortable(),
             Tables\Columns\TextColumn::make('name')->searchable()->limit(30),
-            Tables\Columns\TextColumn::make('service.name')->label('Service')->sortable(),
+            Tables\Columns\TextColumn::make('serviceType.name')->label('Service Type')->sortable(),
             Tables\Columns\TextColumn::make('provider.name')->label('Provider')->sortable(),
             Tables\Columns\BadgeColumn::make('status')->colors([
                 'warning' => 'draft',

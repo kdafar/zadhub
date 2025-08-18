@@ -10,7 +10,7 @@ class Provider extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'service_id',
+        'service_type_id',
         'name',
         'slug',
         'status',
@@ -26,6 +26,7 @@ class Provider extends Model
         'contact_phone',
         'timezone',
         'whatsapp_phone_number_id',
+        'api_token',
         'meta',
     ];
 
@@ -37,9 +38,9 @@ class Provider extends Model
         'meta' => 'array',
     ];
 
-    public function service()
+    public function serviceType()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(ServiceType::class, 'service_type_id');
     }
 
     public function credentials()

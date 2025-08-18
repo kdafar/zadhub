@@ -6,7 +6,7 @@ use App\Filament\Resources\FlowTriggerResource\Pages;
 use App\Models\FlowTrigger;
 use App\Models\FlowVersion;
 use App\Models\Provider;
-use App\Models\Service;
+use App\Models\ServiceType;
 use Filament\Forms;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
@@ -29,11 +29,11 @@ class FlowTriggerResource extends Resource
     public static function form(Forms\Form $form): Forms\Form
     {
         // Helpers that guarantee non-null labels
-        $serviceOptions = fn () => Service::query()
+        $serviceOptions = fn () => ServiceType::query()
             ->orderBy('name')
             ->get(['id', 'name'])
             ->mapWithKeys(fn ($s) => [
-                $s->id => ($s->name !== null && $s->name !== '') ? (string) $s->name : ('Service #'.$s->id),
+                $s->id => ($s->name !== null && $s->name !== '') ? (string) $s->name : ('Service Type #'.$s->id),
             ])->all();
 
         $providerOptions = fn () => Provider::query()
@@ -106,9 +106,9 @@ class FlowTriggerResource extends Resource
                         ->live(),
 
                     Forms\Components\Grid::make(3)->schema([
-                        Forms\Components\Select::make('service_id')
-                            ->label('Service')
-                            ->relationship('service', 'name')   // <— key change
+                        Forms\Components\Select::make('service_type_id')
+                            ->label('Service Type')
+                            ->relationship('serviceType', 'name')
                             ->searchable()
                             ->preload()
                             ->native(false),
@@ -139,10 +139,10 @@ class FlowTriggerResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('keyword')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('service.name')
-                    ->label('Service')
+                Tables\Columns\TextColumn::make('serviceType.name')
+                    ->label('Service Type')
                     ->sortable()
-                    ->formatStateUsing(fn ($state, $record) => $state ?: ('Service #'.($record->service_id ?? '—'))
+                    ->formatStateUsing(fn ($state, $record) => $state ?: ('Service Type #'.($record->service_type_id ?? '—'))
                     ),
                 Tables\Columns\TextColumn::make('provider.name')->label('Provider')->sortable()->toggleable(),
                 Tables\Columns\TextColumn::make('flow_version_id')
