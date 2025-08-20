@@ -62,15 +62,13 @@ class WhatsAppMessageHandler
             return;
         }
 
-        // If session is already in a flow, any text message could be a request to restart or exit.
-        if ($session->flow_version_id && $session->status === 'active') {
-            // For now, we'll just ignore random text during an active flow.
-            // Later, this could handle commands like 'exit' or 'restart'.
-            Log::info('Ignoring text message during active flow', ['session_id' => $session->id]);
+        // 1. If session is in a specific state (e.g., choosing a provider), handle that.
+        if (($session->context['state'] ?? null) === 'selecting_provider') {
+            $this->handleProviderSelection($session, $incomingText, $provider);
             return;
         }
 
-        // 1. Try to find a direct flow trigger for the provider
+        // 2. Try to find a direct flow trigger for the provider (e.g. for shortcuts)
         $flow = Flow::where('provider_id', $provider->id)
             ->where('trigger_keyword', $incomingText)
             ->where('is_active', true)
@@ -81,10 +79,72 @@ class WhatsAppMessageHandler
             return;
         }
 
-        // TODO: Add logic for selecting ServiceType and then Provider
-        // For now, we will just send a default message if no trigger is found.
+        // 3. Try to find a service type trigger
+        $serviceType = ServiceType::where('code', $incomingText)->first();
+        if ($serviceType) {
+            $providers = $serviceType->providers()->where('is_active', true)->get();
+            if ($providers->count() === 1) {
+                // If only one provider, start its default flow directly
+                $firstProvider = $providers->first();
+                $defaultFlow = $firstProvider->flows()->first(); // Assuming a provider has a default flow
+                if ($defaultFlow) {
+                    $this->startFlow($session, $defaultFlow);
+                    return;
+                }
+            } elseif ($providers->count() > 1) {
+                // If multiple providers, ask the user to choose
+                $session->context = ['state' => 'selecting_provider', 'service_type_id' => $serviceType->id];
+                $session->save();
+
+                $providerList = $providers->map(fn($p, $i) => ($i + 1) . ". {$p->name}")->implode("\n");
+                $message = "Please choose a provider by replying with their number:\n{$providerList}";
+
+                $apiService = $this->apiServiceFactory->make($provider);
+                $apiService->sendTextMessage($session->phone, $message);
+                return;
+            }
+        }
+
+        // 4. If nothing matches, send a default message.
         $apiService = $this->apiServiceFactory->make($provider);
         $apiService->sendTextMessage($session->phone, "Sorry, I didn't understand that. Please use a valid keyword to start.");
+    }
+
+    private function handleProviderSelection(WhatsappSession $session, string $text, Provider $currentProvider): void
+    {
+        $serviceTypeId = $session->context['service_type_id'] ?? null;
+        if (! $serviceTypeId) {
+            // Should not happen, but good to be defensive. Reset state.
+            $session->context = [];
+            $session->save();
+            $this->handleTextMessage($session, $currentProvider, $text);
+            return;
+        }
+
+        $providers = ServiceType::find($serviceTypeId)->providers()->where('is_active', true)->get();
+
+        $selection = (int) trim($text) - 1; // User sees 1-based, we use 0-based index
+
+        if ($providers->has($selection)) {
+            $selectedProvider = $providers->get($selection);
+            $defaultFlow = $selectedProvider->flows()->first(); // Assuming a provider has a default flow
+
+            if ($defaultFlow) {
+                // Clear the selection state from context before starting the flow
+                $session->context = [];
+                $session->save();
+                $this->startFlow($session, $defaultFlow);
+            } else {
+                $apiService = $this->apiServiceFactory->make($currentProvider);
+                $apiService->sendTextMessage($session->phone, "Sorry, this provider does not have an active flow.");
+            }
+        } else {
+            // Invalid selection, re-prompt
+            $providerList = $providers->map(fn($p, $i) => ($i + 1) . ". {$p->name}")->implode("\n");
+            $message = "Invalid selection. Please choose a provider by replying with their number:\n{$providerList}";
+            $apiService = $this->apiServiceFactory->make($currentProvider);
+            $apiService->sendTextMessage($session->phone, $message);
+        }
     }
 
     private function startFlow(WhatsappSession $session, Flow $flow): void
