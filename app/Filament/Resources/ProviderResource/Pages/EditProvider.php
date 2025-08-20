@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProviderResource\Pages;
 
 use App\Filament\Resources\ProviderResource;
+use App\Services\ProviderOnboardingService;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -39,5 +40,13 @@ class EditProvider extends EditRecord
 
             Actions\DeleteAction::make(),
         ];
+    }
+
+    protected function afterSave(): void
+    {
+        if ($this->record->wasChanged('service_type_id')) {
+            $onboardingService = app(ProviderOnboardingService::class);
+            $onboardingService->onboard($this->record);
+        }
     }
 }

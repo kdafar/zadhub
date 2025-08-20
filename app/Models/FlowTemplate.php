@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class FlowTemplate extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'service_type_id',
         'name',
@@ -15,6 +17,7 @@ class FlowTemplate extends Model
         'is_active',
         'versioning_strategy', // optional
         'meta',
+        'latest_version_id', 
     ];
 
     protected $casts = [

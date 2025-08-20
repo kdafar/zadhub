@@ -79,6 +79,15 @@ class ServiceTypeResource extends Resource
                 ->valueLabel('Value')
                 ->helperText('Stored as JSON. e.g. supports=address/menu/checkout')
                 ->reorderable(),
+
+            Forms\Components\Section::make('Message Templates')
+                ->schema([
+                    Forms\Components\KeyValue::make('message_templates')
+                        ->keyLabel('Template Key')
+                        ->valueLabel('Template Content')
+                        ->helperText('JSON templates for system messages (e.g., welcome, update).')
+                        ->reorderable(),
+                ]),
         ]);
     }
 

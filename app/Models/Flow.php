@@ -20,6 +20,10 @@ class Flow extends Model
         'trigger_keyword',
     ];
 
+    protected $casts = [
+        'meta' => 'array',
+    ];
+
     public function provider(): BelongsTo
     {
         return $this->belongsTo(Provider::class);

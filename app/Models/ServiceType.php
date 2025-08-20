@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class ServiceType extends Model
 {
@@ -34,7 +35,7 @@ class ServiceType extends Model
         static::creating(function (ServiceType $serviceType) {
             if (blank($serviceType->slug)) {
                 $basis = $serviceType->code ?: $serviceType->name ?: uniqid('svc_', true);
-                $serviceType->slug = \Str::slug($basis);
+                $serviceType->slug = Str::slug($basis);
             }
         });
     }
