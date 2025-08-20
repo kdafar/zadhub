@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\Flow;
-use App\Models\FlowVersion;
 use App\Models\Provider;
+use App\Models\ServiceType;
 use App\Models\WhatsappSession;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -34,28 +34,43 @@ class WhatsAppMessageHandler
         $provider = Provider::where('whatsapp_phone_number_id', $phoneNumberId)->first();
         if (! $provider) {
             Log::warning('No provider found for this phone number ID.', ['whatsapp_phone_number_id' => $phoneNumberId]);
-
             return;
         }
 
         $session = WhatsappSession::firstOrCreate(
             ['phone' => $from, 'provider_id' => $provider->id],
-            ['status' => 'active', 'locale' => 'en']
+            ['status' => 'active', 'locale' => 'en', 'context' => new \Illuminate\Database\Eloquent\Casts\AsArrayObject([])]
         );
 
         $session->update(['last_interacted_at' => now()]);
 
         if (isset($messageValue['interactive']['nfm_reply'])) {
             $this->handleFlowReply($session, $messageValue['interactive']['nfm_reply']);
-
             return;
         }
 
-        $incomingText = strtolower(trim($messageValue['text']['body'] ?? ''));
+        if (isset($messageValue['text']['body'])) {
+            $this->handleTextMessage($session, $provider, $messageValue['text']['body']);
+            return;
+        }
+    }
+
+    private function handleTextMessage(WhatsappSession $session, Provider $provider, string $text): void
+    {
+        $incomingText = strtolower(trim($text));
         if ($incomingText === '') {
             return;
         }
 
+        // If session is already in a flow, any text message could be a request to restart or exit.
+        if ($session->flow_version_id && $session->status === 'active') {
+            // For now, we'll just ignore random text during an active flow.
+            // Later, this could handle commands like 'exit' or 'restart'.
+            Log::info('Ignoring text message during active flow', ['session_id' => $session->id]);
+            return;
+        }
+
+        // 1. Try to find a direct flow trigger for the provider
         $flow = Flow::where('provider_id', $provider->id)
             ->where('trigger_keyword', $incomingText)
             ->where('is_active', true)
@@ -63,7 +78,13 @@ class WhatsAppMessageHandler
 
         if ($flow) {
             $this->startFlow($session, $flow);
+            return;
         }
+
+        // TODO: Add logic for selecting ServiceType and then Provider
+        // For now, we will just send a default message if no trigger is found.
+        $apiService = $this->apiServiceFactory->make($provider);
+        $apiService->sendTextMessage($session->phone, "Sorry, I didn't understand that. Please use a valid keyword to start.");
     }
 
     private function startFlow(WhatsappSession $session, Flow $flow): void
@@ -71,20 +92,17 @@ class WhatsAppMessageHandler
         $liveVersion = $flow->liveVersion()->with('metaFlow')->first();
         if (! $liveVersion) {
             Log::error("Flow ID {$flow->id} has no published version.");
-
             return;
         }
 
         if (! $liveVersion->metaFlow?->meta_flow_id) {
             Log::error("Flow Version ID {$liveVersion->id} has not been published to Meta and is missing a `meta_flow_id`.");
-
             return;
         }
 
         $screens = $liveVersion->builder_data['screens'] ?? [];
         if (empty($screens)) {
             Log::error("Flow ID {$flow->id} live version has no screens.");
-
             return;
         }
 
@@ -113,7 +131,6 @@ class WhatsAppMessageHandler
 
         if (! $version) {
             Log::warning('No flow_version for session', ['session_id' => $session->id]);
-
             return;
         }
 
@@ -124,7 +141,6 @@ class WhatsAppMessageHandler
 
         if (! $currentScreen) {
             Log::warning('Current screen not found', ['session_id' => $session->id, 'screen' => $currentScreenId]);
-
             return;
         }
 
@@ -168,7 +184,6 @@ class WhatsAppMessageHandler
         $provider = $session->provider;
         if (empty($provider->whatsapp_phone_number_id) || empty($provider->api_token)) {
             Log::error("Provider {$provider->id} is missing WhatsApp credentials.");
-
             return;
         }
 
@@ -177,7 +192,6 @@ class WhatsAppMessageHandler
 
         if (! $metaFlowId) {
             Log::error("Flow version ID {$version->id} is not published to Meta.");
-
             return;
         }
 
