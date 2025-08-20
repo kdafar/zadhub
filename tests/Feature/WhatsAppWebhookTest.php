@@ -25,7 +25,7 @@ class WhatsAppWebhookTest extends TestCase
         // Mock the factory to ensure it returns the fake service
         $this->app->singleton(WhatsAppApiServiceFactory::class, function () {
             return new class extends WhatsAppApiServiceFactory {
-                public function make(Provider $provider): WhatsAppApiServiceFake
+                public function make(): WhatsAppApiServiceFake
                 {
                     // We return a new fake instance that can be spied on or mocked
                     return new WhatsAppApiServiceFake();
@@ -37,7 +37,7 @@ class WhatsAppWebhookTest extends TestCase
     public function test_it_handles_a_valid_incoming_webhook_and_starts_a_flow()
     {
         // 1. Arrange
-        $provider = Provider::factory()->create(['whatsapp_phone_number_id' => '12345']);
+        $provider = Provider::factory()->create();
         $flow = Flow::factory()->create([
             'provider_id' => $provider->id,
             'trigger_keyword' => 'start',

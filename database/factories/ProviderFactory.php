@@ -30,8 +30,7 @@ class ProviderFactory extends Factory
             'contact_phone' => $this->faker->phoneNumber,
             'timezone' => 'UTC',
             'meta' => [],
-            'whatsapp_phone_number_id' => $this->faker->numerify('############'),
-            'api_token' => Str::random(32),
+            
         ];
     }
 }

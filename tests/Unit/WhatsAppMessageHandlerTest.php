@@ -6,6 +6,7 @@ use App\Models\Flow;
 use App\Models\FlowVersion;
 use App\Models\MetaFlow;
 use App\Models\Provider;
+use App\Models\ServiceType;
 use App\Models\WhatsappSession;
 use App\Services\FlowRenderer;
 use App\Services\WhatsAppApiService;
@@ -20,10 +21,17 @@ class WhatsAppMessageHandlerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // The single WABA provider that sends all messages
+        Provider::factory()->create();
+    }
+
     public function test_it_starts_a_flow_when_a_trigger_keyword_is_received()
     {
         // 1. Arrange
-        $provider = Provider::factory()->create(['whatsapp_phone_number_id' => '12345', 'api_token' => 'fake-token']);
+        $provider = Provider::factory()->create();
         $flow = Flow::factory()->create([
             'provider_id' => $provider->id,
             'trigger_keyword' => 'start',
@@ -70,7 +78,7 @@ class WhatsAppMessageHandlerTest extends TestCase
     public function test_it_handles_a_flow_reply_and_transitions_to_the_next_screen()
     {
         // 1. Arrange
-        $provider = Provider::factory()->create(['whatsapp_phone_number_id' => '12345', 'api_token' => 'fake-token']);
+        $provider = Provider::factory()->create();
         $flow = Flow::factory()->create(['provider_id' => $provider->id]);
         $flowVersion = FlowVersion::factory()->create([
             'flow_id' => $flow->id,
@@ -124,6 +132,52 @@ class WhatsAppMessageHandlerTest extends TestCase
         $session->refresh();
         $this->assertEquals('THANK_YOU', $session->current_screen);
         $this->assertEquals('John Doe', $session->context['user_name']);
+    }
+
+    public function test_it_guides_a_user_through_service_and_provider_selection()
+    {
+        // 1. Arrange
+        $serviceType = ServiceType::factory()->create(['code' => 'food']);
+        $provider1 = Provider::factory()->create(['service_type_id' => $serviceType->id, 'name' => 'Pizza Place']);
+        $provider2 = Provider::factory()->create(['service_type_id' => $serviceType->id, 'name' => 'Burger Joint']);
+        $flow = Flow::factory()->create(['provider_id' => $provider2->id]);
+        $flowVersion = FlowVersion::factory()->create(['flow_id' => $flow->id, 'status' => 'published']);
+        MetaFlow::factory()->create(['flow_version_id' => $flowVersion->id, 'meta_flow_id' => 'meta-flow-456']);
+
+        $apiServiceMock = Mockery::mock(WhatsAppApiService::class);
+        $apiServiceFactoryMock = Mockery::mock(WhatsAppApiServiceFactory::class);
+        $flowRendererMock = Mockery::mock(FlowRenderer::class);
+
+        $apiServiceFactoryMock->shouldReceive('make')->andReturn($apiServiceMock);
+
+        // 2. Act (Part 1: User sends service keyword)
+        $payload1 = $this->createWebhookPayload('111', 'user-phone', 'food');
+        $apiServiceMock->shouldReceive('sendTextMessage')->once()
+            ->with('user-phone', "Please choose a provider by replying with their number:\n1. {$provider1->name}\n2. {$provider2->name}");
+
+        $handler = new WhatsAppMessageHandler($apiServiceFactoryMock, $flowRendererMock);
+        $handler->process($payload1);
+
+        // 3. Assert (Part 1: Session is in selection state)
+        $this->assertDatabaseHas('whatsapp_sessions', [
+            'phone' => 'user-phone',
+            'context' => json_encode(['state' => 'selecting_provider', 'service_type_id' => $serviceType->id])
+        ]);
+
+        // 4. Act (Part 2: User sends provider choice)
+        $payload2 = $this->createWebhookPayload('111', 'user-phone', '2'); // Chooses Burger Joint
+        $flowRendererMock->shouldReceive('renderScreen')->once()->andReturn([]);
+        $apiServiceMock->shouldReceive('sendFlowMessage')->once();
+
+        $handler->process($payload2);
+
+        // 5. Assert (Part 2: Flow has started)
+        $this->assertDatabaseHas('whatsapp_sessions', [
+            'phone' => 'user-phone',
+            'provider_id' => $provider2->id,
+            'flow_version_id' => $flowVersion->id,
+            'context' => '[]' // Context is cleared
+        ]);
     }
 
     protected function createWebhookPayload(string $phoneNumberId, string $from, string $text): array
