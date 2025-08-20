@@ -6,7 +6,7 @@ use App\Models\Provider;
 
 class WhatsAppApiServiceFactory
 {
-    public function make(Provider $provider): WhatsAppApiService|WhatsAppApiServiceFake
+    public function make(): WhatsAppApiService|WhatsAppApiServiceFake
     {
         $useFake = config('services.whatsapp.fake', app()->environment('local'));
 
@@ -14,6 +14,9 @@ class WhatsAppApiServiceFactory
             return new WhatsAppApiServiceFake();
         }
 
-        return new WhatsAppApiService($provider->api_token ?? '', $provider->whatsapp_phone_number_id ?? '');
+        return new WhatsAppApiService(
+            config('services.whatsapp.api_token'),
+            config('services.whatsapp.phone_number_id')
+        );
     }
 }

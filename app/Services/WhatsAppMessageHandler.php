@@ -31,18 +31,22 @@ class WhatsAppMessageHandler
             return;
         }
 
-        $provider = Provider::where('whatsapp_phone_number_id', $phoneNumberId)->first();
-        if (! $provider) {
-            Log::warning('No provider found for this phone number ID.', ['whatsapp_phone_number_id' => $phoneNumberId]);
-            return;
-        }
-
+        // Since we use a single WABA, we don't find the provider via phone number ID anymore.
+        // The session is now the primary context carrier.
         $session = WhatsappSession::firstOrCreate(
-            ['phone' => $from, 'provider_id' => $provider->id],
+            ['phone' => $from],
             ['status' => 'active', 'locale' => 'en', 'context' => new \Illuminate\Database\Eloquent\Casts\AsArrayObject([])]
         );
 
         $session->update(['last_interacted_at' => now()]);
+
+        // The concept of a single "provider" for the message is now ambiguous until the user selects one.
+        // For sending messages back, we'll use the session's provider if set, or a system default.
+        $providerForSending = $session->provider ?? Provider::first();
+        if (! $providerForSending) {
+            Log::error('No providers found in the system to handle message sending.');
+            return;
+        }
 
         if (isset($messageValue['interactive']['nfm_reply'])) {
             $this->handleFlowReply($session, $messageValue['interactive']['nfm_reply']);
@@ -50,7 +54,7 @@ class WhatsAppMessageHandler
         }
 
         if (isset($messageValue['text']['body'])) {
-            $this->handleTextMessage($session, $provider, $messageValue['text']['body']);
+            $this->handleTextMessage($session, $providerForSending, $messageValue['text']['body']);
             return;
         }
     }
@@ -64,28 +68,20 @@ class WhatsAppMessageHandler
 
         // 1. If session is in a specific state (e.g., choosing a provider), handle that.
         if (($session->context['state'] ?? null) === 'selecting_provider') {
-            $this->handleProviderSelection($session, $incomingText, $provider);
+            $this->handleProviderSelection($session, $incomingText);
             return;
         }
 
-        // 2. Try to find a direct flow trigger for the provider (e.g. for shortcuts)
-        $flow = Flow::where('provider_id', $provider->id)
-            ->where('trigger_keyword', $incomingText)
-            ->where('is_active', true)
-            ->first();
-
-        if ($flow) {
-            $this->startFlow($session, $flow);
-            return;
-        }
-
-        // 3. Try to find a service type trigger
+        // 2. Try to find a service type trigger
         $serviceType = ServiceType::where('code', $incomingText)->first();
         if ($serviceType) {
             $providers = $serviceType->providers()->where('is_active', true)->get();
             if ($providers->count() === 1) {
                 // If only one provider, start its default flow directly
                 $firstProvider = $providers->first();
+                // Associate the session with the chosen provider
+                $session->provider()->associate($firstProvider)->save();
+
                 $defaultFlow = $firstProvider->flows()->first(); // Assuming a provider has a default flow
                 if ($defaultFlow) {
                     $this->startFlow($session, $defaultFlow);
@@ -99,25 +95,25 @@ class WhatsAppMessageHandler
                 $providerList = $providers->map(fn($p, $i) => ($i + 1) . ". {$p->name}")->implode("\n");
                 $message = "Please choose a provider by replying with their number:\n{$providerList}";
 
-                $apiService = $this->apiServiceFactory->make($provider);
+                $apiService = $this->apiServiceFactory->make();
                 $apiService->sendTextMessage($session->phone, $message);
                 return;
             }
         }
 
-        // 4. If nothing matches, send a default message.
-        $apiService = $this->apiServiceFactory->make($provider);
+        // 3. If nothing matches, send a default message.
+        $apiService = $this->apiServiceFactory->make();
         $apiService->sendTextMessage($session->phone, "Sorry, I didn't understand that. Please use a valid keyword to start.");
     }
 
-    private function handleProviderSelection(WhatsappSession $session, string $text, Provider $currentProvider): void
+    private function handleProviderSelection(WhatsappSession $session, string $text): void
     {
         $serviceTypeId = $session->context['service_type_id'] ?? null;
         if (! $serviceTypeId) {
             // Should not happen, but good to be defensive. Reset state.
             $session->context = [];
             $session->save();
-            $this->handleTextMessage($session, $currentProvider, $text);
+            $this->handleTextMessage($session, Provider::first(), $text); // Pass a default provider
             return;
         }
 
@@ -127,6 +123,9 @@ class WhatsAppMessageHandler
 
         if ($providers->has($selection)) {
             $selectedProvider = $providers->get($selection);
+            // Associate the session with the chosen provider
+            $session->provider()->associate($selectedProvider)->save();
+
             $defaultFlow = $selectedProvider->flows()->first(); // Assuming a provider has a default flow
 
             if ($defaultFlow) {
@@ -135,14 +134,14 @@ class WhatsAppMessageHandler
                 $session->save();
                 $this->startFlow($session, $defaultFlow);
             } else {
-                $apiService = $this->apiServiceFactory->make($currentProvider);
+                $apiService = $this->apiServiceFactory->make();
                 $apiService->sendTextMessage($session->phone, "Sorry, this provider does not have an active flow.");
             }
         } else {
             // Invalid selection, re-prompt
             $providerList = $providers->map(fn($p, $i) => ($i + 1) . ". {$p->name}")->implode("\n");
             $message = "Invalid selection. Please choose a provider by replying with their number:\n{$providerList}";
-            $apiService = $this->apiServiceFactory->make($currentProvider);
+            $apiService = $this->apiServiceFactory->make();
             $apiService->sendTextMessage($session->phone, $message);
         }
     }
@@ -173,7 +172,7 @@ class WhatsAppMessageHandler
             'flow_version_id' => $liveVersion->id,
             'current_screen' => $first['id'] ?? null,
             'status' => 'active',
-            'context' => new \Illuminate\Database\Eloquent\Casts\AsArrayObject([]),
+            'context' => new IlluminateDatabaseEloquentCastsAsArrayObject([]),
         ]);
 
         $this->pushHistory($session, 'started', [
@@ -241,9 +240,8 @@ class WhatsAppMessageHandler
 
     private function executeScreen(WhatsappSession $session, array $screenConfig, ?string $errorMessage = null): void
     {
-        $provider = $session->provider;
-        if (empty($provider->whatsapp_phone_number_id) || empty($provider->api_token)) {
-            Log::error("Provider {$provider->id} is missing WhatsApp credentials.");
+        if (! $session->provider) {
+            Log::error("Session {$session->id} has no provider, cannot execute screen.");
             return;
         }
 
@@ -255,7 +253,7 @@ class WhatsAppMessageHandler
             return;
         }
 
-        $apiService = $this->apiServiceFactory->make($provider);
+        $apiService = $this->apiServiceFactory->make();
         $screenData = $this->flowRenderer->renderScreen($screenConfig, $session->context ?? [], $errorMessage);
 
         $apiService->sendFlowMessage(
@@ -269,13 +267,8 @@ class WhatsAppMessageHandler
     private function endFlow(WhatsappSession $session, ?string $message = null): void
     {
         if ($message) {
-            $provider = $session->provider;
-            if (empty($provider->whatsapp_phone_number_id) || empty($provider->api_token)) {
-                Log::warning("Provider {$provider->id} is missing WhatsApp credentials. Cannot send end-of-flow message.");
-            } else {
-                $apiService = $this->apiServiceFactory->make($provider);
-                $apiService->sendTextMessage($session->phone, $message);
-            }
+            $apiService = $this->apiServiceFactory->make();
+            $apiService->sendTextMessage($session->phone, $message);
         }
 
         $this->pushHistory($session, 'completed');
@@ -285,6 +278,7 @@ class WhatsAppMessageHandler
             'ended_at' => now(),
             'ended_reason' => 'normal',
         ]);
+    }
     }
 
     private function resolveNextScreenId(array $current, array $screens, array $responseData): ?string
