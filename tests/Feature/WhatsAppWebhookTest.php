@@ -6,6 +6,7 @@ use App\Models\Flow;
 use App\Models\FlowVersion;
 use App\Models\MetaFlow;
 use App\Models\Provider;
+use App\Models\ServiceType;
 use App\Services\WhatsAppApiServiceFactory;
 use App\Services\WhatsAppApiServiceFake;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,10 +26,10 @@ class WhatsAppWebhookTest extends TestCase
         // Mock the factory to ensure it returns the fake service
         $this->app->singleton(WhatsAppApiServiceFactory::class, function () {
             return new class extends WhatsAppApiServiceFactory {
-                public function make(): WhatsAppApiServiceFake
+                public function make(\App\Models\Provider $provider = null): \App\Services\WhatsAppApiService|\App\Services\WhatsAppApiServiceFake
                 {
                     // We return a new fake instance that can be spied on or mocked
-                    return new WhatsAppApiServiceFake();
+                    return new \App\Services\WhatsAppApiServiceFake();
                 }
             };
         });
@@ -37,7 +38,8 @@ class WhatsAppWebhookTest extends TestCase
     public function test_it_handles_a_valid_incoming_webhook_and_starts_a_flow()
     {
         // 1. Arrange
-        $provider = Provider::factory()->create();
+        $serviceType = ServiceType::factory()->create(['code' => 'start']);
+        $provider = Provider::factory()->create(['service_type_id' => $serviceType->id]);
         $flow = Flow::factory()->create([
             'provider_id' => $provider->id,
             'trigger_keyword' => 'start',

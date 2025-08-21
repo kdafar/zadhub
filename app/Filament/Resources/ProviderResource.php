@@ -83,6 +83,17 @@ class ProviderResource extends Resource
                         ->helperText('Base URL of the provider API (e.g., https://api.vendor.com)'),
                 ]),
 
+            Forms\Components\Section::make('WhatsApp Credentials')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('whatsapp_phone_number_id')
+                        ->label('WhatsApp Phone Number ID'),
+                    Forms\Components\TextInput::make('api_token')
+                        ->label('API Token')
+                        ->password()
+                        ->revealable(),
+                ]),
+
             Forms\Components\Section::make('Configuration')
                 ->columns(2)
                 ->schema([

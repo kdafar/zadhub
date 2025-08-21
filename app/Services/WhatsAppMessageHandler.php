@@ -96,7 +96,7 @@ class WhatsAppMessageHandler
                     return;
                 }
 
-                $this->apiServiceFactory->make()->sendTextMessage(
+                $this->apiServiceFactory->make($selectedProvider)->sendTextMessage(
                     $session->phone,
                     "Sorry, this provider does not have an active flow."
                 );
@@ -306,7 +306,7 @@ class WhatsAppMessageHandler
             return;
         }
 
-        $apiService = $this->apiServiceFactory->make();
+        $apiService = $this->apiServiceFactory->make($session->provider);
         $screenData = $this->flowRenderer->renderScreen(
             $screenConfig,
             (array) ($session->context ?? []),

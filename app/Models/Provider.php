@@ -98,4 +98,9 @@ class Provider extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function flows()
+    {
+        return $this->hasMany(Flow::class);
+    }
 }

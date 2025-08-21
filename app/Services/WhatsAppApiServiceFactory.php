@@ -6,7 +6,7 @@ use App\Models\Provider;
 
 class WhatsAppApiServiceFactory
 {
-    public function make(): WhatsAppApiService|WhatsAppApiServiceFake
+    public function make(?Provider $provider = null): WhatsAppApiService|WhatsAppApiServiceFake
     {
         $useFake = config('services.whatsapp.fake', app()->environment('local'));
 
@@ -14,9 +14,18 @@ class WhatsAppApiServiceFactory
             return new WhatsAppApiServiceFake();
         }
 
-        return new WhatsAppApiService(
-            config('services.whatsapp.api_token'),
-            config('services.whatsapp.phone_number_id')
-        );
+        if (! $provider) {
+            $token = config('services.whatsapp.api_token');
+            $phoneId = config('services.whatsapp.phone_number_id');
+        } else {
+            $token = $provider->api_token;
+            $phoneId = $provider->whatsapp_phone_number_id;
+        }
+
+        if (empty($token) || empty($phoneId)) {
+            throw new \Exception('WhatsApp API credentials are not configured.');
+        }
+
+        return new WhatsAppApiService($token, $phoneId);
     }
 }

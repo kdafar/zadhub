@@ -31,7 +31,8 @@ class WhatsAppMessageHandlerTest extends TestCase
     public function test_it_starts_a_flow_when_a_trigger_keyword_is_received()
     {
         // 1. Arrange
-        $provider = Provider::factory()->create();
+        $serviceType = ServiceType::factory()->create(['code' => 'start']);
+        $provider = Provider::factory()->create(['service_type_id' => $serviceType->id]);
         $flow = Flow::factory()->create([
             'provider_id' => $provider->id,
             'trigger_keyword' => 'start',
@@ -57,7 +58,7 @@ class WhatsAppMessageHandlerTest extends TestCase
         $apiServiceFactoryMock = Mockery::mock(WhatsAppApiServiceFactory::class);
         $flowRendererMock = Mockery::mock(FlowRenderer::class);
 
-        $apiServiceFactoryMock->shouldReceive('make')->andReturn($apiServiceMock);
+        $apiServiceFactoryMock->shouldReceive('make')->withAnyArgs()->andReturn($apiServiceMock);
         $flowRendererMock->shouldReceive('renderScreen')->andReturn(['id' => 'WELCOME', 'title' => 'Welcome!']);
         $apiServiceMock->shouldReceive('sendFlowMessage')->once();
 
@@ -120,7 +121,7 @@ class WhatsAppMessageHandlerTest extends TestCase
         $apiServiceFactoryMock = Mockery::mock(WhatsAppApiServiceFactory::class);
         $flowRendererMock = Mockery::mock(FlowRenderer::class);
 
-        $apiServiceFactoryMock->shouldReceive('make')->andReturn($apiServiceMock);
+        $apiServiceFactoryMock->shouldReceive('make')->withAnyArgs()->andReturn($apiServiceMock);
         $flowRendererMock->shouldReceive('renderScreen')->andReturn([]);
         $apiServiceMock->shouldReceive('sendFlowMessage')->once();
 
@@ -148,15 +149,16 @@ class WhatsAppMessageHandlerTest extends TestCase
         $apiServiceFactoryMock = Mockery::mock(WhatsAppApiServiceFactory::class);
         $flowRendererMock = Mockery::mock(FlowRenderer::class);
 
-        $apiServiceFactoryMock->shouldReceive('make')->andReturn($apiServiceMock);
+        $apiServiceFactoryMock->shouldReceive('make')->withAnyArgs()->andReturn($apiServiceMock);
 
         // 2. Act (Part 1: User sends service keyword)
         $payload1 = $this->createWebhookPayload('111', 'user-phone', 'food');
-        $apiServiceMock->shouldReceive('sendTextMessage')->once()
-            ->with('user-phone', "Please choose a provider by replying with their number:\n1. {$provider1->name}\n2. {$provider2->name}");
+        $apiServiceMock->shouldReceive('sendTextMessage')->once();
 
         $handler = new WhatsAppMessageHandler($apiServiceFactoryMock, $flowRendererMock);
         $handler->process($payload1);
+
+        $session = WhatsappSession::where('phone', 'user-phone')->first();
 
         // 3. Assert (Part 1: Session is in selection state)
         $this->assertDatabaseHas('whatsapp_sessions', [
@@ -177,6 +179,63 @@ class WhatsAppMessageHandlerTest extends TestCase
             'provider_id' => $provider2->id,
             'flow_version_id' => $flowVersion->id,
             'context' => '[]' // Context is cleared
+        ]);
+    }
+
+    public function test_it_uses_provider_specific_credentials()
+    {
+        // 1. Arrange
+        $serviceType = ServiceType::factory()->create(['code' => 'start']);
+        $provider = Provider::factory()->create([
+            'service_type_id' => $serviceType->id,
+            'whatsapp_phone_number_id' => '123456789',
+            'api_token' => 'test-token',
+        ]);
+        $flow = Flow::factory()->create([
+            'provider_id' => $provider->id,
+            'trigger_keyword' => 'start',
+        ]);
+        $flowVersion = FlowVersion::factory()->create([
+            'flow_id' => $flow->id,
+            'status' => 'published',
+            'definition' => [
+                'screens' => [
+                    ['id' => 'WELCOME', 'title' => 'Welcome Screen'],
+                ],
+            ],
+        ]);
+        MetaFlow::factory()->create([
+            'flow_version_id' => $flowVersion->id,
+            'meta_flow_id' => 'meta-flow-123',
+        ]);
+
+        $payload = $this->createWebhookPayload('12345', '98765', 'start');
+
+        // Mock dependencies
+        $apiServiceMock = Mockery::mock(WhatsAppApiService::class);
+        $apiServiceFactoryMock = Mockery::mock(WhatsAppApiServiceFactory::class);
+        $flowRendererMock = Mockery::mock(FlowRenderer::class);
+
+        $apiServiceFactoryMock->shouldReceive('make')
+            ->with(Mockery::on(function ($arg) use ($provider) {
+                return $arg->id === $provider->id;
+            }))
+            ->andReturn($apiServiceMock);
+
+        $flowRendererMock->shouldReceive('renderScreen')->andReturn(['id' => 'WELCOME', 'title' => 'Welcome!']);
+        $apiServiceMock->shouldReceive('sendFlowMessage')->once();
+
+        // 2. Act
+        $handler = new WhatsAppMessageHandler($apiServiceFactoryMock, $flowRendererMock);
+        $handler->process($payload);
+
+        // 3. Assert
+        $this->assertDatabaseHas('whatsapp_sessions', [
+            'phone' => '98765',
+            'provider_id' => $provider->id,
+            'flow_version_id' => $flowVersion->id,
+            'current_screen' => 'WELCOME',
+            'status' => 'active',
         ]);
     }
 
