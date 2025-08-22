@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Flow extends Model
 {
@@ -29,11 +28,12 @@ class Flow extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function liveVersion(): HasOne
+    public function liveVersion()
     {
-        return $this->hasOne(FlowVersion::class, 'flow_id')
+        return $this->hasOne(\App\Models\FlowVersion::class, 'flow_id', 'id')
             ->where('status', 'published')
-            ->orderByDesc('published_at'); // or ->orderByDesc('version')
+            ->orderByDesc('published_at')
+            ->orderByDesc('id');
     }
 
     public function versions(): HasMany

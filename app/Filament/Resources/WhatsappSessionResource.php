@@ -179,18 +179,25 @@ class WhatsappSessionResource extends Resource
 
                 Tables\Filters\Filter::make('recent')
                     ->label('Active in last 15m')
-                    ->query(fn ($q) => $q->where('last_interacted_at', '>=', now()->subMinutes(15))),
+                    ->query(function (\Illuminate\Database\Eloquent\Builder $query) {
+                        return $query->where('last_interacted_at', '>=', now()->subMinutes(15));
+                    }),
 
                 Tables\Filters\Filter::make('last_seen_between')
                     ->form([
                         Forms\Components\DateTimePicker::make('from'),
                         Forms\Components\DateTimePicker::make('to'),
                     ])
-                    ->query(function ($q, array $data) {
-                        return $q
-                            ->when($data['from'] ?? null, fn ($q, $from) => $q->where('last_interacted_at', '>=', $from))
-                            ->when($data['to'] ?? null, fn ($q, $to) => $q->where('last_interacted_at', '<=', $to));
+                    ->query(function (\Illuminate\Database\Eloquent\Builder $query, array $data) {
+                        return $query
+                            ->when($data['from'] ?? null, function (\Illuminate\Database\Eloquent\Builder $query, $from) {
+                                return $query->where('last_interacted_at', '>=', $from);
+                            })
+                            ->when($data['to'] ?? null, function (\Illuminate\Database\Eloquent\Builder $query, $to) {
+                                return $query->where('last_interacted_at', '<=', $to);
+                            });
                     }),
+
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

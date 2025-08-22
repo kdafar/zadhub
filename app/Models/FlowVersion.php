@@ -5,34 +5,50 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model; // ✅ import
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FlowVersion extends Model
 {
     use HasFactory;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
-        'name',
+        'flow_id',
         'flow_template_id',
-        'version',
-        'status',
-        'definition',
-        'schema_json',       // ✅ add
-        'components_json',   // (optional)
-        'changelog',
-        'published_at',
-        'meta',
         'service_type_id',
         'provider_id',
-        'flow_id',
+        'name',
+        'version',
+        'status',
+        'is_template',
+        'is_stable',
+        'published_at',
+        'definition',
+        'schema_json',
+        'components_json',
+        'meta',
     ];
 
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
     protected $casts = [
         'definition' => 'array',
-        'schema_json' => 'array',     // ✅ add
-        'components_json' => 'array',     // (optional)
-        'meta' => 'array',
-        'published_at' => 'datetime',
+        'builder_data' => 'array',
+        'schema_json' => 'array',
+        'components_json' => 'array',
     ];
+
+    public function flow(): BelongsTo
+    {
+        return $this->belongsTo(Flow::class);
+    }
 
     // 🔁 Relations
     public function template()
@@ -50,14 +66,9 @@ class FlowVersion extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function flow()
-    {
-        return $this->belongsTo(Flow::class, 'flow_id');
-    }
-
     public function metaFlow()
     {
-        return $this->hasOne(MetaFlow::class);
+        return $this->hasOne(\App\Models\MetaFlow::class, 'flow_version_id');
     }
 
     // 🔎 Scopes

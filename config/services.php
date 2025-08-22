@@ -37,6 +37,7 @@ return [
 
     'whatsapp' => [
         'api_token' => env('WHATSAPP_API_TOKEN'),
+        'api_base' => env('WHATSAPP_API_BASE', 'https://graph.facebook.com/v20.0'),
         'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
         'fake' => env('WHATSAPP_FAKE', true),

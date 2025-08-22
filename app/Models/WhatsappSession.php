@@ -51,7 +51,7 @@ class WhatsappSession extends Model
 
     public function flowVersion()
     {
-        return $this->belongsTo(FlowVersion::class);
+        return $this->belongsTo(\App\Models\FlowVersion::class, 'flow_version_id');
     }
 
     // --- Compatibility accessors for older code that uses customer_phone_number
