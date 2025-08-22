@@ -11,7 +11,7 @@ class WhatsAppApiServiceFactory
         $useFake = config('services.whatsapp.fake', app()->environment('local'));
 
         if ($useFake) {
-            return new WhatsAppApiServiceFake();
+            return new WhatsAppApiServiceFake;
         }
 
         if (! $provider) {

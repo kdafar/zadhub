@@ -6,7 +6,6 @@ use App\Models\Flow;
 use App\Models\Provider;
 use App\Models\ServiceType;
 use App\Models\WhatsappSession;
-use Illuminate\Database\Eloquent\Casts\AsArrayObject;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\MessageBag;
@@ -27,9 +26,9 @@ class WhatsAppMessageHandler
         Log::info('Incoming WhatsApp Payload:', $payload);
 
         $messageValue = $payload['entry'][0]['changes'][0]['value']['messages'][0] ?? null;
-        $from         = $messageValue['from'] ?? null;
+        $from = $messageValue['from'] ?? null;
 
-        if (!$from || !$messageValue) {
+        if (! $from || ! $messageValue) {
             return;
         }
 
@@ -37,9 +36,9 @@ class WhatsAppMessageHandler
         $session = WhatsappSession::firstOrCreate(
             ['phone' => $from],
             [
-                'status'  => 'active',
-                'locale'  => 'en',
-                'context' => new AsArrayObject([]),
+                'status' => 'active',
+                'locale' => 'en',
+                'context' => [],
             ]
         );
 
@@ -48,6 +47,7 @@ class WhatsAppMessageHandler
         // Text vs NFM (flow) reply
         if (isset($messageValue['interactive']['nfm_reply'])) {
             $this->handleFlowReply($session, $messageValue['interactive']['nfm_reply']);
+
             return;
         }
 
@@ -55,8 +55,9 @@ class WhatsAppMessageHandler
             // Note: for plain text we don't require a provider yet;
             // provider is only required when sending a Flow message (executeScreen).
             $providerForSending = $session->provider ?? Provider::first();
-            if (!$providerForSending) {
+            if (! $providerForSending) {
                 Log::error('No providers found to handle message sending.');
+
                 return;
             }
 
@@ -77,13 +78,14 @@ class WhatsAppMessageHandler
         // 1) If user is selecting a provider, treat message as selection
         if (($session->context['state'] ?? null) === 'selecting_provider') {
             $this->handleProviderSelection($session, $incomingText);
+
             return;
         }
 
         // 2) Keyword → service type
         $serviceType = ServiceType::where('code', $incomingText)->first();
         if ($serviceType) {
-            $providers = $serviceType->providers()->where('is_active', true)->get();
+            $providers = $serviceType->providers()->where('is_active', true)->orderBy('name')->get();
 
             if ($providers->count() === 1) {
                 // Single provider → associate & start default flow
@@ -93,39 +95,43 @@ class WhatsAppMessageHandler
                 $defaultFlow = $selectedProvider->flows()->first(); // your “default flow” convention
                 if ($defaultFlow) {
                     $this->startFlow($session, $defaultFlow);
+
                     return;
                 }
 
                 $this->apiServiceFactory->make($selectedProvider)->sendTextMessage(
                     $session->phone,
-                    "Sorry, this provider does not have an active flow."
+                    'Sorry, this provider does not have an active flow.'
                 );
+
                 return;
             }
 
             if ($providers->count() > 1) {
-                // Multiple providers → ask user to choose
-                $session->context = new AsArrayObject([
-                    'state'           => 'selecting_provider',
-                    'service_type_id' => $serviceType->id,
+                $session->update([
+                    'status' => 'selecting_provider',
+                    'context' => [
+                        'state' => 'selecting_provider',
+                        'service_type_id' => $serviceType->id,
+                    ],
                 ]);
-                $session->save();
 
                 $providerList = $providers
                     ->values()
-                    ->map(fn ($p, $i) => ($i + 1) . ". {$p->name}")
+                    ->map(fn ($p, $i) => ($i + 1).". {$p->name}")
                     ->implode("\n");
 
-                $message = "Please choose a provider by replying with their number:\n{$providerList}";
-                $this->apiServiceFactory->make()->sendTextMessage($session->phone, $message);
+                $message = "Select a provider by replying with the number:\n{$providerList}";
+                $this->apiServiceFactory->make($provider)->sendTextMessage($session->phone, $message);
+
                 return;
             }
         }
 
-        // 3) Fallback
-        $this->apiServiceFactory->make()->sendTextMessage(
+        // 3) Fallback (modified)
+        $this->apiServiceFactory->make($provider)->sendTextMessage(
             $session->phone,
-            "Sorry, I didn't understand that. Please use a valid keyword to start."
+            "I couldn't understand your message. Please reply with a valid keyword to continue."
         );
     }
 
@@ -136,21 +142,23 @@ class WhatsAppMessageHandler
     {
         $serviceTypeId = $session->context['service_type_id'] ?? null;
 
-        if (!$serviceTypeId) {
+        if (! $serviceTypeId) {
             // Defensive reset; then re-route as normal text
-            $session->context = new AsArrayObject([]);
+            $session->context = [];
             $session->save();
 
             $fallbackProvider = Provider::first();
             if ($fallbackProvider) {
                 $this->handleTextMessage($session, $fallbackProvider, $text);
             }
+
             return;
         }
 
         $providers = ServiceType::find($serviceTypeId)
             ?->providers()
             ->where('is_active', true)
+            ->orderBy('name') // <-- Add this
             ->get() ?? collect();
 
         // User sees 1-based; convert to zero-based index
@@ -163,28 +171,30 @@ class WhatsAppMessageHandler
             $defaultFlow = $selectedProvider->flows()->first();
             if ($defaultFlow) {
                 // clear selection state
-                $session->context = new AsArrayObject([]);
+                $session->context = [];
                 $session->save();
 
                 $this->startFlow($session, $defaultFlow);
+
                 return;
             }
 
-            $this->apiServiceFactory->make()->sendTextMessage(
+            $this->apiServiceFactory->make($selectedProvider)->sendTextMessage(
                 $session->phone,
-                "Sorry, this provider does not have an active flow."
+                'Sorry, this provider does not have an active flow.'
             );
+
             return;
         }
 
         // Invalid selection → re-prompt
         $providerList = $providers
             ->values()
-            ->map(fn ($p, $i) => ($i + 1) . ". {$p->name}")
+            ->map(fn ($p, $i) => ($i + 1).". {$p->name}")
             ->implode("\n");
 
         $message = "Invalid selection. Please choose a provider by replying with their number:\n{$providerList}";
-        $this->apiServiceFactory->make()->sendTextMessage($session->phone, $message);
+        $this->apiServiceFactory->make($session->provider)->sendTextMessage($session->phone, $message);
     }
 
     /**
@@ -194,19 +204,22 @@ class WhatsAppMessageHandler
     {
         $liveVersion = $flow->liveVersion()->with('metaFlow')->first();
 
-        if (!$liveVersion) {
+        if (! $liveVersion) {
             Log::error("Flow ID {$flow->id} has no published version.");
+
             return;
         }
 
-        if (!$liveVersion->metaFlow?->meta_flow_id) {
+        if (! $liveVersion->metaFlow?->meta_flow_id) {
             Log::error("Flow Version ID {$liveVersion->id} has not been published to Meta (missing meta_flow_id).");
+
             return;
         }
 
         $screens = $liveVersion->builder_data['screens'] ?? [];
         if (empty($screens)) {
             Log::error("Flow ID {$flow->id} live version has no screens.");
+
             return;
         }
 
@@ -215,15 +228,15 @@ class WhatsAppMessageHandler
         $session->update([
             'service_type_id' => $flow->provider?->service_type_id,
             'flow_version_id' => $liveVersion->id,
-            'current_screen'  => $first['id'] ?? null,
-            'status'          => 'active',
-            'context'         => new AsArrayObject([]),
+            'current_screen' => $first['id'] ?? null,
+            'status' => 'active',
+            'context' => [],
         ]);
 
         $this->pushHistory($session, 'started', [
-            'flow_id'         => $flow->id,
+            'flow_id' => $flow->id,
             'flow_version_id' => $liveVersion->id,
-            'next'            => $first['id'] ?? null,
+            'next' => $first['id'] ?? null,
         ]);
 
         $this->executeScreen($session, $first);
@@ -236,18 +249,20 @@ class WhatsAppMessageHandler
     {
         $version = $session->flowVersion()->with('metaFlow')->first();
 
-        if (!$version) {
+        if (! $version) {
             Log::warning('No flow_version for session', ['session_id' => $session->id]);
+
             return;
         }
 
-        $responseData    = json_decode($replyData['response_json'] ?? '{}', true) ?: [];
+        $responseData = json_decode($replyData['response_json'] ?? '{}', true) ?: [];
         $currentScreenId = $session->current_screen;
-        $screens         = $version->builder_data['screens'] ?? [];
-        $currentScreen   = collect($screens)->firstWhere('id', $currentScreenId);
+        $screens = $version->builder_data['screens'] ?? [];
+        $currentScreen = collect($screens)->firstWhere('id', $currentScreenId);
 
-        if (!$currentScreen) {
+        if (! $currentScreen) {
             Log::warning('Current screen not found', ['session_id' => $session->id, 'screen' => $currentScreenId]);
+
             return;
         }
 
@@ -264,6 +279,7 @@ class WhatsAppMessageHandler
         if ($validator->fails()) {
             $this->pushHistory($session, 'validation_failed', ['error' => $validator->errors()->first()]);
             $this->sendValidationError($session, $currentScreen, $validator->errors());
+
             return;
         }
 
@@ -280,6 +296,7 @@ class WhatsAppMessageHandler
                 $session->update(['current_screen' => $next['id']]);
                 $this->pushHistory($session, 'screen_changed', ['to' => $next['id']]);
                 $this->executeScreen($session, $next);
+
                 return;
             }
         }
@@ -293,16 +310,18 @@ class WhatsAppMessageHandler
      */
     private function executeScreen(WhatsappSession $session, array $screenConfig, ?string $errorMessage = null): void
     {
-        if (!$session->provider) {
+        if (! $session->provider) {
             Log::error("Session {$session->id} has no provider, cannot execute screen.");
+
             return;
         }
 
-        $version    = $session->flowVersion;
+        $version = $session->flowVersion;
         $metaFlowId = $version?->metaFlow?->meta_flow_id;
 
-        if (!$metaFlowId) {
+        if (! $metaFlowId) {
             Log::error("Flow version ID {$version->id} is not published to Meta (no meta_flow_id).");
+
             return;
         }
 
@@ -327,14 +346,14 @@ class WhatsAppMessageHandler
     private function endFlow(WhatsappSession $session, ?string $message = null): void
     {
         if ($message) {
-            $this->apiServiceFactory->make()->sendTextMessage($session->phone, $message);
+            $this->apiServiceFactory->make($session->provider)->sendTextMessage($session->phone, $message);
         }
 
         $this->pushHistory($session, 'completed');
 
         $session->update([
-            'status'       => 'completed',
-            'ended_at'     => now(),
+            'status' => 'completed',
+            'ended_at' => now(),
             'ended_reason' => 'normal',
         ]);
     }
@@ -351,7 +370,7 @@ class WhatsAppMessageHandler
     {
         // 1) Choice routing: map of "value" => "screen_id"
         $choiceMap = $current['data']['next_on_choice'] ?? null;
-        if (is_array($choiceMap) && !empty($responseData)) {
+        if (is_array($choiceMap) && ! empty($responseData)) {
             foreach ($responseData as $value) {
                 $val = is_array($value) ? ($value['value'] ?? null) : $value;
                 if ($val !== null) {
@@ -367,7 +386,7 @@ class WhatsAppMessageHandler
         }
 
         // 2) Explicit next screen
-        if (!empty($current['data']['next_screen_id'])) {
+        if (! empty($current['data']['next_screen_id'])) {
             return (string) $current['data']['next_screen_id'];
         }
 
@@ -388,10 +407,10 @@ class WhatsAppMessageHandler
     private function getComponentClass(string $key): ?string
     {
         $map = [
-            'text_body'   => \App\FlowComponents\TextBody::class,
-            'dropdown'    => \App\FlowComponents\Dropdown::class,
-            'text_input'  => \App\FlowComponents\TextInput::class,
-            'image'       => \App\FlowComponents\Image::class,
+            'text_body' => \App\FlowComponents\TextBody::class,
+            'dropdown' => \App\FlowComponents\Dropdown::class,
+            'text_input' => \App\FlowComponents\TextInput::class,
+            'image' => \App\FlowComponents\Image::class,
             'date_picker' => \App\FlowComponents\DatePicker::class,
         ];
 
@@ -411,12 +430,12 @@ class WhatsAppMessageHandler
      */
     private function pushHistory(WhatsappSession $s, string $event, array $meta = []): void
     {
-        $history   = (array) ($s->flow_history ?? []);
+        $history = (array) ($s->flow_history ?? []);
         $history[] = [
-            'at'     => now()->toIso8601String(),
-            'event'  => $event,
+            'at' => now()->toIso8601String(),
+            'event' => $event,
             'screen' => $s->current_screen ?? null,
-            'meta'   => $meta,
+            'meta' => $meta,
         ];
 
         $s->flow_history = $history;

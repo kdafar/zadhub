@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class WhatsappSession extends Model
 {
     use HasFactory;
+
     protected $table = 'whatsapp_sessions';
 
     protected $fillable = [

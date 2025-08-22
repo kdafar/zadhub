@@ -14,6 +14,7 @@ class ProviderFactory extends Factory
     public function definition()
     {
         $name = $this->faker->company;
+
         return [
             'service_type_id' => ServiceType::factory(),
             'name' => $name,
@@ -30,7 +31,7 @@ class ProviderFactory extends Factory
             'contact_phone' => $this->faker->phoneNumber,
             'timezone' => 'UTC',
             'meta' => [],
-            
+
         ];
     }
 }

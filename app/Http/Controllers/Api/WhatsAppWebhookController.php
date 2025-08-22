@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Services\WhatsAppMessageHandler;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-
 use Illuminate\Support\Str;
 
 class WhatsAppWebhookController extends Controller

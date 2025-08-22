@@ -8,7 +8,6 @@ use App\Models\MetaFlow;
 use App\Models\Provider;
 use App\Models\ServiceType;
 use App\Services\WhatsAppApiServiceFactory;
-use App\Services\WhatsAppApiServiceFake;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -25,11 +24,12 @@ class WhatsAppWebhookTest extends TestCase
 
         // Mock the factory to ensure it returns the fake service
         $this->app->singleton(WhatsAppApiServiceFactory::class, function () {
-            return new class extends WhatsAppApiServiceFactory {
-                public function make(\App\Models\Provider $provider = null): \App\Services\WhatsAppApiService|\App\Services\WhatsAppApiServiceFake
+            return new class extends WhatsAppApiServiceFactory
+            {
+                public function make(?\App\Models\Provider $provider = null): \App\Services\WhatsAppApiService|\App\Services\WhatsAppApiServiceFake
                 {
                     // We return a new fake instance that can be spied on or mocked
-                    return new \App\Services\WhatsAppApiServiceFake();
+                    return new \App\Services\WhatsAppApiServiceFake;
                 }
             };
         });
@@ -62,7 +62,7 @@ class WhatsAppWebhookTest extends TestCase
 
         // 2. Act
         $response = $this->postJson('/api/whatsapp/webhook', $payload, [
-            'X-Hub-Signature-256' => 'sha256=' . hash_hmac('sha256', json_encode($payload), config('services.whatsapp.app_secret')),
+            'X-Hub-Signature-256' => 'sha256='.hash_hmac('sha256', json_encode($payload), config('services.whatsapp.app_secret')),
         ]);
 
         // 3. Assert

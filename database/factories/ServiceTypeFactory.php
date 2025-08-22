@@ -13,6 +13,7 @@ class ServiceTypeFactory extends Factory
     public function definition()
     {
         $name = $this->faker->company;
+
         return [
             'code' => Str::slug($name),
             'slug' => Str::slug($name),

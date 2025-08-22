@@ -14,7 +14,7 @@ class MetaFlowFactory extends Factory
     {
         return [
             'flow_version_id' => FlowVersion::factory(),
-            'meta_flow_id' => 'meta-flow-' . $this->faker->uuid,
+            'meta_flow_id' => 'meta-flow-'.$this->faker->uuid,
             'status' => 'published',
             'published_at' => now(),
         ];

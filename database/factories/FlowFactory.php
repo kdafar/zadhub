@@ -14,6 +14,7 @@ class FlowFactory extends Factory
     public function definition()
     {
         $name = $this->faker->words(3, true);
+
         return [
             'provider_id' => Provider::factory(),
             'name' => $name,

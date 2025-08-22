@@ -14,6 +14,7 @@ class FlowTemplateFactory extends Factory
     public function definition()
     {
         $name = $this->faker->words(3, true);
+
         return [
             'service_type_id' => ServiceType::factory(),
             'name' => $name,

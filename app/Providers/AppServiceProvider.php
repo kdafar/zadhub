@@ -13,7 +13,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(WhatsAppApiServiceFactory::class, function ($app) {
-            return new WhatsAppApiServiceFactory();
+            return new WhatsAppApiServiceFactory;
         });
     }
 
