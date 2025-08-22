@@ -16,10 +16,13 @@ class FlowRenderer
      */
     public function renderScreen(array $screenConfig, array $context = [], ?string $errorMessage = null): array
     {
-        $screenData = $screenConfig['data'] ?? [];
+        // Interpolate all string values in the screen configuration
+        $interpolatedConfig = $this->interpolateArray($screenConfig, $context);
 
-        $title = $screenData['title'] ?? $screenConfig['title'] ?? ' ';
-        $body = $this->interpolate($screenData['text'] ?? '', $context);
+        $screenData = $interpolatedConfig['data'] ?? [];
+
+        $title = $screenData['title'] ?? $interpolatedConfig['title'] ?? ' ';
+        $body = $screenData['text'] ?? '';
         $footer = $screenData['footer_label'] ?? 'Next';
 
         if ($errorMessage) {
@@ -27,12 +30,25 @@ class FlowRenderer
         }
 
         return [
-            'id' => $screenConfig['id'],
-            'title' => $this->interpolate($title, $context),
+            'id' => $interpolatedConfig['id'],
+            'title' => $title,
             'body' => $body,
-            'footer' => $this->interpolate($footer, $context),
+            'footer' => $footer,
             'data_bindings' => $context,
         ];
+    }
+
+    protected function interpolateArray(array $arr, array $context): array
+    {
+        foreach ($arr as $key => &$value) {
+            if (is_array($value)) {
+                $value = $this->interpolateArray($value, $context);
+            } elseif (is_string($value)) {
+                $value = $this->interpolate($value, $context);
+            }
+        }
+
+        return $arr;
     }
 
     protected function interpolate(string $text, array $context): string

@@ -68,8 +68,7 @@ class BuildTemplate extends EditRecord
                                 $screens = $get('../../screens') ?? [];
 
                                 return collect($screens)
-                                    ->filter(fn ($screen) => ! empty($screen['title'])) // <-- Add this line
-                                    ->pluck('title', 'id')
+                                    ->pluck('id', 'id')
                                     ->toArray();
                             })
                             ->helperText('Choose which screen to go to when the footer is pressed.'),

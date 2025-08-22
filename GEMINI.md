@@ -32,9 +32,17 @@ This is a Laravel-based backend for a multi-tenant WhatsApp messaging service. I
 
 ---
 
-## High-Level Goals (To-Do)
-1.  **Database Schema:** Build the migrations for `service_types`, `providers`, and `flows` tables to support this new architecture.
-2.  **Admin Panel (Filament):** Create resources for managing `Service Types` (including editing templates and messages) and `Providers`.
-3.  **Onboarding Logic:** Implement the "copy template to new flow" logic that runs when a `Provider` is assigned a `Service Type`.
-4.  **Dynamic Message Handling:** Refactor `WhatsAppMessageHandler` to load flows and message templates based on the Provider's assigned `Service Type`.
-5.  **Security First:** Implement the webhook signature validation as the top priority.
+## Current Project Status
+- **Core Engine:** The foundational logic for multi-step, branching conversational flows is complete and tested. The system can successfully start a flow, process user replies, and navigate between screens based on choices.
+- **Database Schema:** The database schema is implemented, with all major models (`ServiceType`, `Provider`, `Flow`, `FlowVersion`, etc.) in place.
+- **Admin Panel:** Basic Filament resources for managing core models have been created.
+- **Onboarding & Routing:** The `ProviderOnboardingService` and the `TriggerResolver` for keyword-based routing are functional.
+- **Security:** Webhook signature validation is implemented.
+
+---
+
+## High-Level Goals (Next Steps)
+1.  **Enhance the Flow Builder UI:** Create a user-friendly interface in the Filament admin panel for non-developers to visually build and manage conversational flows. This is the highest priority.
+2.  **Implement Data Interpolation:** Update the `FlowRenderer` to substitute variables from the session `context` into message text (e.g., `Welcome, {{name}}!`).
+3.  **Develop an External API Adapter Strategy:** Define a pattern for making external API calls from within a flow (e.g., a new `ApiAction` component) to fetch or send data to provider systems.
+4.  **Centralize System Messages:** Refactor the `WhatsAppMessageHandler` to pull all user-facing strings (error messages, prompts) from the `message_templates` field on the `ServiceType` model.
