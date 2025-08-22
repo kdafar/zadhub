@@ -6,6 +6,7 @@ use App\Models\Flow;
 use App\Models\Provider;
 use App\Models\ServiceType;
 use App\Models\WhatsappSession;
+use App\Services\Flows\FlowActionService;
 use App\Services\Flows\FlowEngine;
 use App\Services\WhatsApp\TriggerResolver;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +19,8 @@ class WhatsAppMessageHandler
     public function __construct(
         protected WhatsAppApiServiceFactory $apiServiceFactory,
         protected FlowRenderer $flowRenderer,
-        protected TriggerResolver $triggers
+        protected TriggerResolver $triggers,
+        protected FlowActionService $actionService
     ) {}
 
     public function process(array $payload): void
@@ -80,7 +82,7 @@ class WhatsAppMessageHandler
                 return;
             }
         }
-        
+
         // Fallback: If no flow or service is found, send a generic error.
         $providerForSending = $session->provider ?? Provider::where('is_active', true)->first();
         if ($providerForSending) {
@@ -190,6 +192,23 @@ class WhatsAppMessageHandler
             $session->refresh();
 
             $this->pushHistory($session, 'started', ['flow_id' => $flow->id, 'next' => $startId]);
+
+            // Execute actions if any, and potentially get a new screen to jump to
+            $actions = $firstScreen['actions'] ?? [];
+            if (! empty($actions)) {
+                $nextId = $this->actionService->executeActions($actions, $session);
+                if ($nextId) {
+                    $nextScreen = collect($screens)->firstWhere('id', $nextId);
+                    if ($nextScreen) {
+                        $session->update(['current_screen' => $nextId]);
+                        $this->pushHistory($session, 'action_redirect', ['to' => $nextId]);
+                        $this->executeScreen($session, $nextScreen);
+
+                        return;
+                    }
+                }
+            }
+
             $this->executeScreen($session, $firstScreen);
         } catch (\Throwable $e) {
             Log::error('startFlow crashed', [
@@ -253,6 +272,23 @@ class WhatsAppMessageHandler
             if ($next) {
                 $session->update(['current_screen' => $next['id']]);
                 $this->pushHistory($session, 'screen_changed', ['to' => $next['id']]);
+
+                // Execute actions on the new screen before rendering it
+                $actions = $next['actions'] ?? [];
+                if (! empty($actions)) {
+                    $finalNextId = $this->actionService->executeActions($actions, $session);
+                    if ($finalNextId) {
+                        $finalScreen = collect($screens)->firstWhere('id', $finalNextId);
+                        if ($finalScreen) {
+                            $session->update(['current_screen' => $finalNextId]);
+                            $this->pushHistory($session, 'action_redirect', ['to' => $finalNextId]);
+                            $this->executeScreen($session, $finalScreen);
+
+                            return;
+                        }
+                    }
+                }
+
                 $this->executeScreen($session, $next);
 
                 return;
@@ -389,7 +425,7 @@ class WhatsAppMessageHandler
         $s->flow_history = $history;
         $s->save();
     }
-    
+
     private function normalizeScreens(array $screens): array
     {
         $isList = array_is_list($screens);
@@ -411,7 +447,7 @@ class WhatsAppMessageHandler
 
         return $out;
     }
-    
+
     /**
      * Very tolerant extraction of a plain text string from a screen config.
      * Supports both legacy and modern shapes.
