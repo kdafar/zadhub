@@ -3,95 +3,88 @@
 namespace App\Services;
 
 use App\Models\Flow;
+use App\Models\FlowTemplate;
+use App\Models\FlowVersion;
 use App\Models\Provider;
-use App\Models\ServiceType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class ProviderOnboardingService
 {
-    public function onboard(Provider $provider): void
+    public function onboard(Provider $provider): ?Flow
     {
-        if (! $provider->service_type_id) {
-            Log::info("Provider {$provider->id} has no service type. Skipping onboarding.");
-
-            return;
-        }
-
-        $serviceType = ServiceType::find($provider->service_type_id);
+        $serviceType = $provider->serviceType;
         if (! $serviceType) {
-            Log::warning("ServiceType not found for provider {$provider->id}.");
+            Log::warning('Onboarding aborted: Provider has no serviceType.', ['provider_id' => $provider->id]);
 
-            return;
+            return null;
         }
 
-        // belongsTo relation; no need for ->first()
-        $flowTemplate = $serviceType->defaultFlowTemplate;
-        if (! $flowTemplate) {
-            Log::info("ServiceType {$serviceType->id} has no default flow template. Skipping flow creation.");
-
-            return;
-        }
-
-        // Avoid duplicates
-        $existingFlow = Flow::where('provider_id', $provider->id)
-            ->where('name', $flowTemplate->name)
-            ->first();
-
-        if ($existingFlow) {
-            Log::info("Provider {$provider->id} already has a flow based on template {$flowTemplate->id}.");
-
-            return;
-        }
-
-        DB::transaction(function () use ($provider, $flowTemplate) {
-            $flow = Flow::create([
-                'provider_id' => $provider->id,
-                'name' => $flowTemplate->name,
-                'trigger_keyword' => $flowTemplate->slug,
-                'is_active' => true,
-                'meta' => ['source_template_id' => $flowTemplate->id],
+        $template = $serviceType->defaultFlowTemplate;
+        if (! $template) {
+            Log::warning('Onboarding aborted: No default FlowTemplate for serviceType.', [
+                'provider_id' => $provider->id, 'service_type_id' => $serviceType->id,
             ]);
 
-            // Prefer explicit latest_version_id; fallback to newest row
-            $latestVersion = $flowTemplate->latestVersion
-                ?? $flowTemplate->versions()->orderByDesc('id')->first();
+            return null;
+        }
 
-            if (! $latestVersion) {
-                Log::info("FlowTemplate {$flowTemplate->id} has no versions to copy.");
+        $templateVersion = $template->latestVersion;
+        if (! $templateVersion || $templateVersion->status !== 'published') {
+            Log::warning('Onboarding aborted: Template has no published version linked.', [
+                'provider_id' => $provider->id, 'template_id' => $template->id,
+            ]);
 
-                return;
+            return null;
+        }
+
+        return DB::transaction(function () use ($provider, $template, $templateVersion) {
+            $flow = Flow::firstOrCreate(
+                [
+                    'provider_id' => $provider->id,
+                    'trigger_keyword' => $template->slug,
+                ],
+                [
+                    'name' => $template->name ?? 'Provider Default Flow',
+                    'is_active' => true,
+                    'meta' => ['onboarded_from_template_id' => $template->id],
+                ]
+            );
+
+            // Only clone a version if the flow doesn't have one already.
+            if (! $flow->versions()->exists()) {
+                $newVersion = $this->cloneTemplateVersion($templateVersion, $flow, $template);
+
+                if (Schema::hasColumn('flows', 'live_version_id')) {
+                    $flow->forceFill(['live_version_id' => $newVersion->id])->save();
+                }
+                Log::info('Onboarding successful: Cloned new version.', ['flow_id' => $flow->id, 'new_version_id' => $newVersion->id]);
+            } else {
+                Log::info('Onboarding check: Flow already exists with versions.', ['flow_id' => $flow->id]);
             }
 
-            // Compute next version to avoid UNIQUE(flow_template_id, version)
-            $nextVersion = (int) ($flowTemplate->versions()->max('version') ?? 0) + 1;
-
-            $newVersion = $latestVersion->replicate();
-
-            // Keep linkage (sqlite says NOT NULL), but avoid unique collision by bumping version
-            $newVersion->flow_template_id = $flowTemplate->id;
-            $newVersion->version = $nextVersion;
-
-            // Make it clearly a provider copy (only if columns exist)
-            if (\Schema::hasColumn('flow_versions', 'is_template')) {
-                $newVersion->is_template = false;
-            }
-            if (\Schema::hasColumn('flow_versions', 'use_latest_published')) {
-                $newVersion->use_latest_published = false;
-            }
-            if (\Schema::hasColumn('flow_versions', 'meta')) {
-                $meta = (array) ($newVersion->meta ?? []);
-                $meta['source_template_id'] = $flowTemplate->id;
-                $newVersion->meta = $meta;
-            }
-
-            // Link to the provider flow (sets flow_id)
-            $newVersion->flow()->associate($flow);
-
-            $newVersion->saveOrFail();
-
-            Log::info("Onboarded provider {$provider->id} with flow {$flow->id} and version {$newVersion->version} from template {$flowTemplate->id}.");
+            return $flow->fresh();
         });
+    }
 
+    protected function cloneTemplateVersion(FlowVersion $templateVersion, Flow $flow, FlowTemplate $template): FlowVersion
+    {
+        // Calculate the next available version number for this template to satisfy unique constraints.
+        $nextVersionNumber = (int) (FlowVersion::where('flow_template_id', $template->id)->max('version') ?? 0) + 1;
+
+        $newVersionData = $templateVersion->replicate([
+            'id', 'flow_id', 'is_template', 'version',
+        ])->toArray();
+
+        return FlowVersion::create(array_merge($newVersionData, [
+            'flow_id' => $flow->id,
+            'flow_template_id' => $template->id,
+            'provider_id' => $flow->provider_id,
+            'is_template' => false,
+            'version' => $nextVersionNumber,
+            'name' => "v{$nextVersionNumber}",
+            'published_at' => now(),
+        ]));
     }
 }
