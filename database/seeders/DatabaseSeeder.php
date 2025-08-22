@@ -36,11 +36,11 @@ class DatabaseSeeder extends Seeder
             $now = Carbon::now();
 
             /**
-             * 1) SERVICES
-             * Your table (from your dump) had: id, slug, name_en, name_ar, entry_flow_template_id, timestamps
+             * 1) SERVICE TYPES
+             * Your table is now `service_types`.
              * We’ll also write optional columns only if they exist (code, description, default_locale, is_active, meta).
              */
-            $services = [
+            $serviceTypes = [
                 [
                     'code' => 'restaurant',         // only if column exists
                     'slug' => Str::slug('restaurant'),
@@ -73,30 +73,30 @@ class DatabaseSeeder extends Seeder
                 ],
             ];
 
-            foreach ($services as $svc) {
+            foreach ($serviceTypes as $svc) {
                 // Upsert by slug (always exists on your table)
-                $payload = $this->onlyExistingColumns('services', $svc) + [
+                $payload = $this->onlyExistingColumns('service_types', $svc) + [
                     'updated_at' => $now,
                     'created_at' => $now,
                 ];
-                DB::table('services')->updateOrInsert(
+                DB::table('service_types')->updateOrInsert(
                     ['slug' => $payload['slug']],
                     $payload
                 );
             }
 
-            $svcRestaurant = DB::table('services')->where('slug', 'restaurant')->first();
-            $svcTelecom = DB::table('services')->where('slug', 'telecom')->first();
-            $svcHospital = DB::table('services')->where('slug', 'hospital')->first();
+            $svcRestaurant = DB::table('service_types')->where('slug', 'restaurant')->first();
+            $svcTelecom = DB::table('service_types')->where('slug', 'telecom')->first();
+            $svcHospital = DB::table('service_types')->where('slug', 'hospital')->first();
 
             /**
              * 2) PROVIDERS
-             * Your table has: service_id, name, slug, status, api_base_url, auth_type, is_sandbox, locale_defaults, feature_flags, timestamps, deleted_at
+             * Your table has: service_type_id, name, slug, status, api_base_url, auth_type, is_sandbox, locale_defaults, feature_flags, timestamps, deleted_at
              * (No is_active / callback_url / contact_* / timezone / meta)
              */
             $providers = [
                 [
-                    'service_id' => $svcRestaurant->id,
+                    'service_type_id' => $svcRestaurant->id,
                     'name' => 'BannerKW Eats',
                     'slug' => 'bannerkw-eats',
                     'status' => 'active',
@@ -107,7 +107,7 @@ class DatabaseSeeder extends Seeder
                     'feature_flags' => ['catalog' => true],
                 ],
                 [
-                    'service_id' => $svcTelecom->id,
+                    'service_type_id' => $svcTelecom->id,
                     'name' => 'Zad Telecom',
                     'slug' => 'zad-telecom',
                     'status' => 'active',
@@ -118,7 +118,7 @@ class DatabaseSeeder extends Seeder
                     'feature_flags' => ['esim' => true],
                 ],
                 [
-                    'service_id' => $svcHospital->id,
+                    'service_type_id' => $svcHospital->id,
                     'name' => 'CarePlus Hospital',
                     'slug' => 'careplus-hospital',
                     'status' => 'active',
@@ -172,12 +172,12 @@ class DatabaseSeeder extends Seeder
             }
 
             /**
-             * 4) FLOW_TEMPLATES (id, service_id, slug, name, description, latest_version_id, timestamps)
+             * 4) FLOW_TEMPLATES (id, service_type_id, slug, name, description, latest_version_id, timestamps)
              */
             $tpls = [
-                ['service_id' => $svcRestaurant->id, 'slug' => Str::slug('Restaurant Main Flow'), 'name' => 'Restaurant Main Flow', 'description' => 'Base order flow (address → menu → cart → checkout)'],
-                ['service_id' => $svcTelecom->id,    'slug' => Str::slug('Telecom Main Flow'),    'name' => 'Telecom Main Flow',    'description' => 'Balance, plans, recharge flow'],
-                ['service_id' => $svcHospital->id,   'slug' => Str::slug('Hospital Main Flow'),   'name' => 'Hospital Main Flow',   'description' => 'Appointments & doctors flow'],
+                ['service_type_id' => $svcRestaurant->id, 'slug' => Str::slug('Restaurant Main Flow'), 'name' => 'Restaurant Main Flow', 'description' => 'Base order flow (address → menu → cart → checkout)'],
+                ['service_type_id' => $svcTelecom->id,    'slug' => Str::slug('Telecom Main Flow'),    'name' => 'Telecom Main Flow',    'description' => 'Balance, plans, recharge flow'],
+                ['service_type_id' => $svcHospital->id,   'slug' => Str::slug('Hospital Main Flow'),   'name' => 'Hospital Main Flow',   'description' => 'Appointments & doctors flow'],
             ];
             foreach ($tpls as $t) {
                 $payload = $this->onlyExistingColumns('flow_templates', $t) + ['updated_at' => $now, 'created_at' => $now];
@@ -275,20 +275,20 @@ class DatabaseSeeder extends Seeder
             /**
              * 8) SERVICE_KEYWORDS
              * Your error shows 'weight' column does NOT exist. We’ll include it only if present.
-             * Common columns: service_id, keyword, locale, (is_active?), timestamps
+             * Common columns: service_type_id, keyword, locale, (is_active?), timestamps
              */
             $keywords = [
-                ['service_id' => $svcRestaurant->id, 'keyword' => 'menu',     'locale' => 'en', 'is_active' => true, 'weight' => 10],
-                ['service_id' => $svcRestaurant->id, 'keyword' => 'order',    'locale' => 'en', 'is_active' => true, 'weight' => 9],
-                ['service_id' => $svcTelecom->id,    'keyword' => 'balance',  'locale' => 'en', 'is_active' => true, 'weight' => 10],
-                ['service_id' => $svcTelecom->id,    'keyword' => 'plans',    'locale' => 'en', 'is_active' => true, 'weight' => 9],
-                ['service_id' => $svcHospital->id,   'keyword' => 'doctor',   'locale' => 'en', 'is_active' => true, 'weight' => 10],
-                ['service_id' => $svcHospital->id,   'keyword' => 'clinic',   'locale' => 'en', 'is_active' => true, 'weight' => 9],
+                ['service_type_id' => $svcRestaurant->id, 'keyword' => 'menu',     'locale' => 'en', 'is_active' => true, 'weight' => 10],
+                ['service_type_id' => $svcRestaurant->id, 'keyword' => 'order',    'locale' => 'en', 'is_active' => true, 'weight' => 9],
+                ['service_type_id' => $svcTelecom->id,    'keyword' => 'balance',  'locale' => 'en', 'is_active' => true, 'weight' => 10],
+                ['service_type_id' => $svcTelecom->id,    'keyword' => 'plans',    'locale' => 'en', 'is_active' => true, 'weight' => 9],
+                ['service_type_id' => $svcHospital->id,   'keyword' => 'doctor',   'locale' => 'en', 'is_active' => true, 'weight' => 10],
+                ['service_type_id' => $svcHospital->id,   'keyword' => 'clinic',   'locale' => 'en', 'is_active' => true, 'weight' => 9],
             ];
             foreach ($keywords as $kw) {
                 $payload = $this->onlyExistingColumns('service_keywords', $kw) + ['updated_at' => $now, 'created_at' => $now];
                 DB::table('service_keywords')->updateOrInsert(
-                    ['service_id' => $kw['service_id'], 'keyword' => $kw['keyword'], 'locale' => $kw['locale']],
+                    ['service_type_id' => $kw['service_type_id'], 'keyword' => $kw['keyword'], 'locale' => $kw['locale']],
                     $payload
                 );
             }
@@ -418,7 +418,7 @@ class DatabaseSeeder extends Seeder
             $order = [
                 'provider_id' => $provRestaurant->id,
                 'session_id' => $sessionId,
-                'service_id' => $svcRestaurant->id,
+                'service_type_id' => $svcRestaurant->id,
                 'cart_id' => $cartId,
                 'external_id' => 'ORD-TEST-1001',
                 'status' => 'pending',

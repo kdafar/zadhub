@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Flow;
+use App\Models\FlowTrigger;
 use App\Models\FlowVersion;
 use App\Models\MetaFlow;
 use App\Models\Provider;
@@ -56,6 +57,12 @@ class WhatsAppWebhookTest extends TestCase
         MetaFlow::factory()->create([
             'flow_version_id' => $flowVersion->id,
             'meta_flow_id' => 'meta-flow-123',
+        ]);
+
+        FlowTrigger::factory()->create([
+            'keyword' => 'start',
+            'flow_version_id' => $flowVersion->id,
+            'provider_id' => $provider->id,
         ]);
 
         $payload = $this->createWebhookPayload('12345', '98765', 'start');

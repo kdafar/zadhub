@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class FlowTrigger extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'keyword', 'service_type_id', 'provider_id', 'flow_version_id',
         'use_latest_published', 'locale', 'priority', 'is_active',
