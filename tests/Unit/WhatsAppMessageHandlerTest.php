@@ -7,12 +7,12 @@ use App\Models\FlowTrigger;
 use App\Models\FlowVersion;
 use App\Models\MetaFlow;
 use App\Models\Provider;
-use App\Models\WhatsappSession;
 use App\Services\FlowRenderer;
 use App\Services\WhatsApp\TriggerResolver;
 use App\Services\WhatsAppApiService;
 use App\Services\WhatsAppApiServiceFactory;
 use App\Services\WhatsAppMessageHandler;
+use App\Models\WhatsappSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Tests\TestCase;
@@ -35,8 +35,9 @@ class WhatsAppMessageHandlerTest extends TestCase
             'flow_id' => $flow->id,
             'status' => 'published',
             'definition' => [
+                'start_screen' => 'WELCOME',
                 'screens' => [
-                    ['id' => 'WELCOME', 'title' => 'Welcome Screen'],
+                    'WELCOME' => ['id' => 'WELCOME', 'title' => 'Welcome Screen'],
                 ],
             ],
         ]);
@@ -86,15 +87,12 @@ class WhatsAppMessageHandlerTest extends TestCase
             'status' => 'published',
             'definition' => [
                 'screens' => [
-                    [
+                    'ASK_NAME' => [
                         'id' => 'ASK_NAME',
                         'title' => 'Enter Name',
-                        'children' => [
-                            ['type' => 'text_input', 'data' => ['name' => 'user_name', 'is_required' => true]],
-                        ],
-                        'footer' => ['next' => 'THANK_YOU'], // Using FlowEngine compatible format
+                        'footer' => ['next' => 'THANK_YOU'],
                     ],
-                    [
+                    'THANK_YOU' => [
                         'id' => 'THANK_YOU',
                         'title' => 'Thank You',
                     ],
@@ -134,6 +132,123 @@ class WhatsAppMessageHandlerTest extends TestCase
         $session->refresh();
         $this->assertEquals('THANK_YOU', $session->current_screen);
         $this->assertEquals('John Doe', $session->context['user_name']);
+    }
+
+    public function test_it_handles_a_multi_step_branching_flow()
+    {
+        // 1. Arrange
+        $provider = Provider::factory()->create();
+        $flow = Flow::factory()->create(['provider_id' => $provider->id]);
+        $flowVersion = FlowVersion::factory()->create([
+            'flow_id' => $flow->id,
+            'status' => 'published',
+            'definition' => [
+                'start_screen' => 'CHOOSE_PATH',
+                'screens' => [
+                    'CHOOSE_PATH' => [
+                        'id' => 'CHOOSE_PATH',
+                        'components' => [
+                            ['type' => 'Dropdown', 'name' => 'path', 'options' => [
+                                ['value' => 'A', 'next' => 'PATH_A'],
+                                ['value' => 'B', 'next' => 'PATH_B'],
+                            ]]
+                        ],
+                    ],
+                    'PATH_A' => ['id' => 'PATH_A', 'footer' => ['next' => 'END']],
+                    'PATH_B' => ['id' => 'PATH_B', 'footer' => ['next' => 'END']],
+                    'END' => ['id' => 'END'],
+                ],
+            ],
+        ]);
+        MetaFlow::factory()->create(['flow_version_id' => $flowVersion->id]);
+
+        $session = WhatsappSession::factory()->create([
+            'provider_id' => $provider->id,
+            'flow_version_id' => $flowVersion->id,
+            'current_screen' => 'CHOOSE_PATH',
+            'status' => 'active',
+        ]);
+
+        $payload = $this->createFlowReplyWebhookPayload('123', $session->phone, ['path' => 'A']);
+
+        // Mock dependencies
+        $apiServiceMock = Mockery::mock(WhatsAppApiService::class);
+        $apiServiceFactoryMock = Mockery::mock(WhatsAppApiServiceFactory::class);
+        $flowRendererMock = Mockery::mock(FlowRenderer::class);
+        $triggerResolverMock = Mockery::mock(TriggerResolver::class);
+
+        $apiServiceFactoryMock->shouldReceive('make')->withAnyArgs()->andReturn($apiServiceMock);
+        $flowRendererMock->shouldReceive('renderScreen')->andReturn([]);
+        $apiServiceMock->shouldReceive('sendFlowMessage')->once();
+
+        // 2. Act
+        $handler = new WhatsAppMessageHandler($apiServiceFactoryMock, $flowRendererMock, $triggerResolverMock);
+        $handler->process($payload);
+
+        // 3. Assert
+        $session->refresh();
+        $this->assertEquals('PATH_A', $session->current_screen);
+        $this->assertEquals('A', $session->context['path']);
+    }
+
+    public function test_it_interpolates_context_variables_into_the_next_screen()
+    {
+        // 1. Arrange
+        $provider = Provider::factory()->create();
+        $flow = Flow::factory()->create(['provider_id' => $provider->id]);
+        $flowVersion = FlowVersion::factory()->create([
+            'flow_id' => $flow->id,
+            'status' => 'published',
+            'definition' => [
+                'start_screen' => 'ASK_NAME',
+                'screens' => [
+                    'ASK_NAME' => [
+                        'id' => 'ASK_NAME',
+                        'footer' => ['next' => 'GREETING'],
+                    ],
+                    'GREETING' => [
+                        'id' => 'GREETING',
+                        'data' => [
+                            'title' => 'Welcome, {{user.name}}!',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        MetaFlow::factory()->create(['flow_version_id' => $flowVersion->id]);
+
+        $session = WhatsappSession::factory()->create([
+            'provider_id' => $provider->id,
+            'flow_version_id' => $flowVersion->id,
+            'current_screen' => 'ASK_NAME',
+        ]);
+
+        $payload = $this->createFlowReplyWebhookPayload('123', $session->phone, ['user' => ['name' => 'John']]);
+
+        // Mock dependencies
+        $apiServiceMock = Mockery::mock(WhatsAppApiService::class);
+        $apiServiceFactoryMock = Mockery::mock(WhatsAppApiServiceFactory::class);
+        $flowRendererMock = $this->app->make(FlowRenderer::class); // Use real renderer
+        $triggerResolverMock = Mockery::mock(TriggerResolver::class);
+
+        $apiServiceFactoryMock->shouldReceive('make')->withAnyArgs()->andReturn($apiServiceMock);
+        // Assert that the rendered screen data has the interpolated title
+        $apiServiceMock->shouldReceive('sendFlowMessage')->once()->with(
+            Mockery::any(),
+            Mockery::any(),
+            Mockery::any(),
+            Mockery::on(function ($screenData) {
+                return $screenData['title'] === 'Welcome, John!';
+            })
+        );
+
+        // 2. Act
+        $handler = new WhatsAppMessageHandler($apiServiceFactoryMock, $flowRendererMock, $triggerResolverMock);
+        $handler->process($payload);
+
+        // 3. Assert
+        $session->refresh();
+        $this->assertEquals('GREETING', $session->current_screen);
     }
 
     protected function createWebhookPayload(string $phoneNumberId, string $from, string $text): array

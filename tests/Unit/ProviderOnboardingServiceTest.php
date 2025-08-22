@@ -53,6 +53,9 @@ class ProviderOnboardingServiceTest extends TestCase
 
         $flowTemplate->update(['latest_version_id' => $templateVersion->id]);
 
+        // Link the template as the default for the service type
+        $serviceType->update(['default_flow_template_id' => $flowTemplate->id]);
+
         $provider = Provider::factory()->create([
             'service_type_id' => $serviceType->id,
             'name' => 'Demo Provider',

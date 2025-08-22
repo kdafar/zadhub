@@ -49,8 +49,9 @@ class WhatsAppWebhookTest extends TestCase
             'flow_id' => $flow->id,
             'status' => 'published',
             'definition' => [
+                'start_screen' => 'WELCOME',
                 'screens' => [
-                    ['id' => 'WELCOME', 'title' => 'Welcome Screen'],
+                    'WELCOME' => ['id' => 'WELCOME', 'title' => 'Welcome Screen'],
                 ],
             ],
         ]);
