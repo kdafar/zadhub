@@ -41,8 +41,13 @@ class FlowActionService
     private function handleApiCall(array $action, WhatsappSession $session): ?string
     {
         $config = $action['config'] ?? [];
-        $url = $config['url'] ?? null;
-        $body = $this->interpolateArray($config['body'] ?? [], $session->context);
+        $context = $session->context ?? [];
+
+        // Interpolate URL, headers, and body
+        $method = strtolower($config['method'] ?? 'POST');
+        $url = $this->interpolate($config['url'] ?? '', $context);
+        $headers = $this->interpolateArray($config['headers'] ?? [], $context);
+        $body = $this->interpolateArray($config['body'] ?? [], $context);
         $saveTo = $config['save_to'] ?? 'api_data';
 
         if (! $url) {
@@ -51,7 +56,16 @@ class FlowActionService
         }
 
         try {
-            $response = $this->http->post($url, $body);
+            $response = $this->http
+                ->withHeaders($headers)
+                ->send($method, $url, ['json' => $body]);
+
+            Log::info('API call response', [
+                'session_id' => $session->id,
+                'status' => $response->status(),
+                'failed' => $response->failed(),
+                'json' => $response->json(),
+            ]);
 
             if ($response->failed()) {
                 Log::error('api_call action failed', [
@@ -59,14 +73,16 @@ class FlowActionService
                     'status' => $response->status(),
                     'response' => $response->body(),
                 ]);
-                return $action['on_failure'] ?? null;
+                return $config['on_failure'] ?? null;
             }
 
-            $context = $session->context ?? [];
             $context[$saveTo] = $response->json();
             $session->update(['context' => $context]);
 
-            return $action['on_success'] ?? null;
+            $onSuccess = $config['on_success'] ?? null;
+            Log::info('API call success', ['session_id' => $session->id, 'on_success' => $onSuccess]);
+
+            return $onSuccess;
         } catch (\Throwable $e) {
             Log::critical('api_call action crashed', [
                 'session_id' => $session->id,
