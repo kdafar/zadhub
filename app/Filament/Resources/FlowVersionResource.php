@@ -9,6 +9,7 @@ use App\Models\Provider;
 use App\Models\ServiceType;
 use App\Services\Meta\MetaFlowsService;
 use Filament\Forms;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -23,27 +24,53 @@ class FlowVersionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
-    public static function form(Forms\Form $form): Forms\Form
-    {
-        return $form->schema([
-            Forms\Components\Grid::make(3)->schema([
-                Forms\Components\TextInput::make('name')->maxLength(120),
-                Forms\Components\Select::make('service_type_id')->label('Service Type')
-                    ->options(ServiceType::query()->pluck('name', 'id'))->searchable(),
-                Forms\Components\Select::make('provider_id')->label('Provider')
-                    ->options(Provider::query()->pluck('name', 'id'))->searchable(),
-            ]),
-            Forms\Components\Grid::make(3)->schema([
-                Forms\Components\TextInput::make('version')->numeric()->minValue(1)->default(1),
-                Forms\Components\TextInput::make('status')->disabled(),
-                Forms\Components\DateTimePicker::make('published_at')->disabled(),
-            ]),
-            Forms\Components\Textarea::make('definition')
-                ->rows(28)
-                ->required()
-                ->helperText('JSON with screens[] and meta.start'),
-        ]);
-    }
+public static function form(Forms\Form $form): Forms\Form
+{
+    return $form->schema([
+        Forms\Components\Grid::make(3)->schema([
+            Forms\Components\TextInput::make('name')->maxLength(120),
+
+            Forms\Components\Select::make('service_type_id')
+                ->label('Service Type')
+                ->options(
+                    \App\Models\ServiceType::query()
+                        ->selectRaw("id, COALESCE(name, name_en, name_ar, slug) AS label")
+                        ->orderBy('label')
+                        ->pluck('label', 'id')
+                        ->toArray()
+                )
+                ->searchable()
+                ->preload()
+                ->required(),
+
+            Forms\Components\Select::make('provider_id')
+                ->label('Provider')
+                // Optional: filter by selected service type to keep it clean
+                ->options(fn (Get $get) => \App\Models\Provider::query()
+                    ->when($get('service_type_id'), fn ($q, $st) => $q->where('service_type_id', $st))
+                    ->selectRaw("id, COALESCE(name, slug, CONCAT('Provider #', id)) AS label")
+                    ->orderBy('label')
+                    ->pluck('label', 'id')
+                    ->toArray()
+                )
+                ->searchable()
+                ->preload()
+                ->required(),
+        ]),
+
+        Forms\Components\Grid::make(3)->schema([
+            Forms\Components\TextInput::make('version')->numeric()->minValue(1)->default(1),
+            Forms\Components\TextInput::make('status')->disabled(),
+            Forms\Components\DateTimePicker::make('published_at')->disabled(),
+        ]),
+
+        Forms\Components\Textarea::make('definition')
+            ->rows(28)
+            ->required()
+            ->helperText('JSON with screens[] and meta.start'),
+    ]);
+}
+
 
     public static function table(Tables\Table $table): Tables\Table
     {

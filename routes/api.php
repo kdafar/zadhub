@@ -4,7 +4,7 @@ use App\Http\Controllers\Api\WhatsAppWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::match(['get', 'post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
+Route::match(['GET','POST'], '/whatsapp/webhook/appB', [WhatsAppWebhookController::class, 'handle'])->defaults('appKey','appB');
 
 Route::get('/user', function (Request $request) {
     return $request->user();
