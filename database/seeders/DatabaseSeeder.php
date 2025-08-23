@@ -50,6 +50,16 @@ class DatabaseSeeder extends Seeder
                     'default_locale' => 'en',
                     'is_active' => true,
                     'meta' => ['supports' => ['address', 'menu', 'checkout']],
+                    'message_templates' => [
+                        'en' => [
+                            'fallback' => 'Sorry, I didn\'t understand that. Please use one of the keywords to get started.',
+                            'flow_completed' => 'Thank you! Your request has been received.',
+                        ],
+                        'ar' => [
+                            'fallback' => 'عذراً، لم أفهم ذلك. الرجاء استخدام إحدى الكلمات الرئيسية للبدء.',
+                            'flow_completed' => 'شكراً لك! تم استلام طلبك.',
+                        ],
+                    ],
                 ],
                 [
                     'code' => 'telecom',
@@ -60,6 +70,7 @@ class DatabaseSeeder extends Seeder
                     'default_locale' => 'en',
                     'is_active' => true,
                     'meta' => ['supports' => ['balance', 'plans', 'payments']],
+                    'message_templates' => [],
                 ],
                 [
                     'code' => 'hospital',
@@ -70,6 +81,7 @@ class DatabaseSeeder extends Seeder
                     'default_locale' => 'en',
                     'is_active' => true,
                     'meta' => ['supports' => ['doctors', 'appointments', 'pharmacy']],
+                    'message_templates' => [],
                 ],
             ];
 

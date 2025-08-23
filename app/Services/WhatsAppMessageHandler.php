@@ -25,7 +25,6 @@ class WhatsAppMessageHandler
 
     public function process(array $payload, Provider $provider): void
     {
-        // Avoid logging the full payload which can cause serialization errors with deep objects
         Log::info('Incoming WhatsApp message received.');
 
         $messageValue = $payload['entry'][0]['changes'][0]['value']['messages'][0] ?? null;
@@ -35,7 +34,6 @@ class WhatsAppMessageHandler
             return;
         }
 
-        // Find or create the session, ensuring it's linked to the correct provider.
         $session = WhatsappSession::firstOrCreate(
             ['phone' => $from, 'provider_id' => $provider->id],
             ['status' => 'active', 'locale' => 'en', 'context' => []]
@@ -49,7 +47,6 @@ class WhatsAppMessageHandler
 
         if (isset($messageValue['interactive']['nfm_reply'])) {
             $this->handleFlowReply($session, $messageValue['interactive']['nfm_reply']);
-
             return;
         }
 
@@ -58,9 +55,6 @@ class WhatsAppMessageHandler
         }
     }
 
-    /**
-     * Handle plain text messages (keywords, service codes, etc.)
-     */
     private function handleTextMessage(WhatsappSession $session, string $text): void
     {
         $incomingText = strtolower(trim($text));
@@ -68,14 +62,12 @@ class WhatsAppMessageHandler
             return;
         }
 
-        // The provider is already associated with the session from the webhook controller.
         $provider = $session->provider;
         if (! $provider) {
             Log::error("Could not handle text message: Session {$session->id} has no provider.");
             return;
         }
 
-        // Resolve a trigger scoped to the current provider.
         $trigger = $this->triggers->resolve($incomingText, $provider->id);
 
         if ($trigger) {
@@ -89,11 +81,7 @@ class WhatsAppMessageHandler
             }
         }
 
-        // Fallback: If no flow or service is found, send a generic error.
-        $this->apiServiceFactory->make($provider)->sendTextMessage(
-            $session->phone,
-            "I couldn't understand your message. Please reply with a valid keyword to continue."
-        );
+        $this->sendSystemMessage($session, 'fallback');
     }
 
     private function handleProviderSelection(WhatsappSession $session, string $text): void
@@ -102,9 +90,7 @@ class WhatsAppMessageHandler
         if (! $serviceTypeId) {
             $session->context = [];
             $session->save();
-
             $this->handleTextMessage($session, $text);
-
             return;
         }
 
@@ -120,64 +106,40 @@ class WhatsAppMessageHandler
                 $session->context = [];
                 $session->save();
                 $this->startFlow($session, $defaultFlow);
-
                 return;
             }
 
-            $this->apiServiceFactory->make($selectedProvider)->sendTextMessage($session->phone, 'Sorry, this provider does not have an active flow.');
-
+            $this->sendSystemMessage($session, 'provider_not_ready');
             return;
         }
 
         $providerList = $providers->values()->map(fn ($p, $i) => ($i + 1).'. '.$p->name)->implode("\n");
-        $message = "Invalid selection. Please choose a provider by replying with their number:\n{$providerList}";
-        $this->apiServiceFactory->make($session->provider)->sendTextMessage($session->phone, $message);
+        $this->sendSystemMessage($session, 'invalid_provider_selection', ['provider_list' => $providerList]);
     }
 
-    /**
-     * Start a flow for a session at its first screen.
-     */
     private function startFlow(WhatsappSession $session, Flow $flow): void
     {
         Log::info('startFlow() invoked', ['flow_id' => $flow->id, 'session_id' => $session->id]);
 
         try {
             $liveVersion = $flow->liveVersion()->with('metaFlow')->first();
-            Log::info('Resolved liveVersion', ['flow_id' => $flow->id, 'version_id' => $liveVersion?->id]);
-
             if (! $liveVersion) {
                 Log::error("Flow ID {$flow->id} has no published version.", ['session_id' => $session->id]);
-
                 return;
             }
 
             if (! $liveVersion->metaFlow?->meta_flow_id) {
-                Log::error("Flow Version ID {$liveVersion->id} has not been published to Meta (missing meta_flow_id).", ['session_id' => $session->id]);
-
+                Log::error("Flow Version ID {$liveVersion->id} has not been published to Meta.", ['session_id' => $session->id]);
                 return;
             }
 
-            // Prefer 'definition', then fallback to 'builder_data'
             $def = (array) ($liveVersion->definition ?? []) ?: (array) ($liveVersion->builder_data ?? []);
             $startId = $def['start_screen'] ?? null;
-
-            $screensRaw = $def['screens'] ?? [];
-            if (! is_array($screensRaw)) {
-                Log::error("Flow version ID {$liveVersion->id} has invalid screens shape.", ['session_id' => $session->id, 'type' => gettype($screensRaw)]);
-
-                return;
-            }
-
-            $screens = $this->normalizeScreens($screensRaw);
+            $screens = $this->normalizeScreens($def['screens'] ?? []);
             $firstScreen = collect($screens)->first(fn ($s) => ($s['id'] ?? null) === $startId);
 
             if (! $firstScreen) {
-                Log::error("Flow version ID {$liveVersion->id} has no valid start screen defined.", [
-                    'session_id' => $session->id,
-                    'start_id' => $startId,
-                    'shape' => array_is_list($screensRaw) ? 'list' : 'map',
-                ]);
-
+                Log::error("Flow version ID {$liveVersion->id} has no valid start screen.", ['session_id' => $session->id]);
                 return;
             }
 
@@ -189,61 +151,41 @@ class WhatsAppMessageHandler
                 'context' => [],
             ]);
 
-            // ensure we can read the relation right away
             $session->refresh();
-
             $this->pushHistory($session, 'started', ['flow_id' => $flow->id, 'next' => $startId]);
 
-            // Execute actions if any, and potentially get a new screen to jump to
             $actions = $firstScreen['actions'] ?? [];
             if (! empty($actions)) {
                 $nextId = $this->actionService->executeActions($actions, $session);
-                if ($nextId) {
-                    $nextScreen = collect($screens)->firstWhere('id', $nextId);
-                    if ($nextScreen) {
-                        $session->update(['current_screen' => $nextId]);
-                        $this->pushHistory($session, 'action_redirect', ['to' => $nextId]);
-                        $this->executeScreen($session, $nextScreen);
-
-                        return;
-                    }
+                if ($nextId && ($nextScreen = collect($screens)->firstWhere('id', $nextId))) {
+                    $session->update(['current_screen' => $nextId]);
+                    $this->pushHistory($session, 'action_redirect', ['to' => $nextId]);
+                    $this->executeScreen($session, $nextScreen);
+                    return;
                 }
             }
 
             $this->executeScreen($session, $firstScreen);
         } catch (\Throwable $e) {
-            Log::error('startFlow crashed', [
-                'flow_id' => $flow->id,
-                'session_id' => $session->id,
-                'err' => $e->getMessage(),
-            ]);
+            Log::error('startFlow crashed', ['flow_id' => $flow->id, 'session_id' => $session->id, 'err' => $e->getMessage()]);
         }
     }
 
-    /**
-     * Handle a Flow (NFM) reply.
-     */
     private function handleFlowReply(WhatsappSession $session, array $replyData): void
     {
         $version = $session->flowVersion()->with('metaFlow')->first();
         if (! $version) {
             Log::warning('No flow_version for session', ['session_id' => $session->id]);
-
             return;
         }
 
-        // ✅ parse user reply payload
         $responseData = json_decode($replyData['response_json'] ?? '{}', true) ?: [];
-
         $def = (array) ($version->definition ?? []) ?: (array) ($version->builder_data ?? []);
-        $screensRaw = $def['screens'] ?? [];
-        $screens = $this->normalizeScreens(is_array($screensRaw) ? $screensRaw : []);
+        $screens = $this->normalizeScreens($def['screens'] ?? []);
+        $currentScreen = collect($screens)->first(fn ($s) => ($s['id'] ?? null) === $session->current_screen);
 
-        $currentScreenId = $session->current_screen;
-        $currentScreen = collect($screens)->first(fn ($s) => ($s['id'] ?? null) === $currentScreenId);
         if (! $currentScreen) {
-            Log::warning('Current screen not found', ['session_id' => $session->id, 'screen' => $currentScreenId]);
-
+            Log::warning('Current screen not found', ['session_id' => $session->id, 'screen' => $session->current_screen]);
             return;
         }
 
@@ -259,7 +201,6 @@ class WhatsAppMessageHandler
         if ($validator->fails()) {
             $this->pushHistory($session, 'validation_failed', ['error' => $validator->errors()->first()]);
             $this->sendValidationError($session, $currentScreen, $validator->errors());
-
             return;
         }
 
@@ -268,121 +209,57 @@ class WhatsAppMessageHandler
 
         $nextId = FlowEngine::determineNextScreenId($version->definition, $currentScreen, $responseData, $ctx);
 
-        if ($nextId) {
-            $next = collect($screens)->firstWhere('id', $nextId);
-            if ($next) {
-                $session->update(['current_screen' => $next['id']]);
-                $this->pushHistory($session, 'screen_changed', ['to' => $next['id']]);
+        if ($nextId && ($next = collect($screens)->firstWhere('id', $nextId))) {
+            $session->update(['current_screen' => $next['id']]);
+            $this->pushHistory($session, 'screen_changed', ['to' => $next['id']]);
 
-                // Execute actions on the new screen before rendering it
-                $actions = $next['actions'] ?? [];
-                if (! empty($actions)) {
-                    $finalNextId = $this->actionService->executeActions($actions, $session);
-                    if ($finalNextId) {
-                        $finalScreen = collect($screens)->firstWhere('id', $finalNextId);
-                        if ($finalScreen) {
-                            $session->update(['current_screen' => $finalNextId]);
-                            $this->pushHistory($session, 'action_redirect', ['to' => $finalNextId]);
-                            $this->executeScreen($session, $finalScreen);
-
-                            return;
-                        }
-                    }
+            $actions = $next['actions'] ?? [];
+            if (! empty($actions)) {
+                $finalNextId = $this->actionService->executeActions($actions, $session);
+                if ($finalNextId && ($finalScreen = collect($screens)->firstWhere('id', $finalNextId))) {
+                    $session->update(['current_screen' => $finalNextId]);
+                    $this->pushHistory($session, 'action_redirect', ['to' => $finalNextId]);
+                    $this->executeScreen($session, $finalScreen);
+                    return;
                 }
-
-                $this->executeScreen($session, $next);
-
-                return;
             }
+
+            $this->executeScreen($session, $next);
+            return;
         }
 
-        $this->endFlow($session, 'Thank you! We have received your information.');
+        $this->endFlow($session);
     }
 
     private function executeScreen(WhatsappSession $session, array $screenConfig, ?string $errorMessage = null): void
     {
         if (! $session->provider) {
             Log::error("Session {$session->id} has no provider, cannot execute screen.");
-
             return;
         }
 
         try {
-            // Always fetch the version fresh with the relation
             $version = $session->flowVersion()->with('metaFlow')->first();
             $metaFlowId = $version?->metaFlow?->meta_flow_id;
 
-            Log::info('executeScreen: loaded version/meta', [
-                'session_id' => $session->id,
-                'version_id' => $version?->id,
-                'has_meta' => (bool) $metaFlowId,
-                'screen_id' => $screenConfig['id'] ?? null,
-                'screen_type' => $screenConfig['type'] ?? null,
-            ]);
-
             if (! $metaFlowId) {
-                Log::error('Flow version missing or not published to Meta (no meta_flow_id).', [
-                    'session_id' => $session->id,
-                    'version_id' => $version?->id,
-                ]);
-                // Fallback to plain text so the test can keep moving
-                $this->apiServiceFactory->make($session->provider)
-                    ->sendTextMessage($session->phone, $this->extractPlainText($screenConfig, $errorMessage));
-
+                Log::error('Flow version missing or not published to Meta.', ['session_id' => $session->id, 'version_id' => $version?->id]);
+                $this->apiServiceFactory->make($session->provider)->sendTextMessage($session->phone, $this->extractPlainText($screenConfig, $errorMessage));
                 return;
             }
 
             $apiService = $this->apiServiceFactory->make($session->provider);
-
-            // Try render NFM (Flow) message
-            try {
-                $screenData = $this->flowRenderer->renderScreen(
-                    $screenConfig,
-                    (array) ($session->context ?? []),
-                    $errorMessage
-                );
-
-                Log::info('executeScreen: rendered screenData', [
-                    'session_id' => $session->id,
-                    'payload_keys' => is_array($screenData) ? array_keys($screenData) : gettype($screenData),
-                ]);
-
-                $apiService->sendFlowMessage(
-                    $session->phone,
-                    $metaFlowId,
-                    (string) Str::uuid(),
-                    $screenData
-                );
-            } catch (\Throwable $e) {
-                // If render fails, fall back to plain text so the verification succeeds
-                Log::error('FlowRenderer crashed, falling back to text', [
-                    'session_id' => $session->id,
-                    'err' => $e->getMessage(),
-                ]);
-                $apiService->sendTextMessage(
-                    $session->phone,
-                    $this->extractPlainText($screenConfig, $errorMessage)
-                );
-            }
-            Log::info('executeScreen: flow message sent', [
-                'session_id' => $session->id,
-                'meta_flow_id' => $metaFlowId,
-            ]);
+            $screenData = $this->flowRenderer->renderScreen($screenConfig, (array) ($session->context ?? []), $errorMessage);
+            $apiService->sendFlowMessage($session->phone, $metaFlowId, (string) Str::uuid(), $screenData);
 
         } catch (\Throwable $e) {
-            Log::error('executeScreen crashed', [
-                'session_id' => $session->id,
-                'err' => $e->getMessage(),
-            ]);
+            Log::error('executeScreen crashed', ['session_id' => $session->id, 'err' => $e->getMessage()]);
         }
     }
 
-    private function endFlow(WhatsappSession $session, ?string $message = null): void
+    private function endFlow(WhatsappSession $session): void
     {
-        if ($message && $session->provider) {
-            $this->apiServiceFactory->make($session->provider)->sendTextMessage($session->phone, $message);
-        }
-
+        $this->sendSystemMessage($session, 'flow_completed');
         $this->pushHistory($session, 'completed');
 
         $session->update([
@@ -392,9 +269,39 @@ class WhatsAppMessageHandler
         ]);
     }
 
-    /**
-     * Map builder component "type" => handler class.
-     */
+    private function sendSystemMessage(WhatsappSession $session, string $key, array $replacements = []): void
+    {
+        $message = $this->getSystemMessage($session, $key, $replacements);
+        if ($message && $session->provider) {
+            $this->apiServiceFactory->make($session->provider)->sendTextMessage($session->phone, $message);
+        }
+    }
+
+    private function getSystemMessage(WhatsappSession $session, string $key, array $replacements = []): string
+    {
+        $serviceType = $session->provider?->serviceType;
+        $locale = $session->locale ?? 'en';
+
+        $template = data_get($serviceType?->message_templates, "{$locale}.{$key}")
+            ?? data_get($serviceType?->message_templates, "en.{$key}");
+
+        if (! $template) {
+            $defaults = [
+                'fallback' => "I couldn't understand your message. Please reply with a valid keyword to continue.",
+                'provider_not_ready' => 'Sorry, this provider does not have an active flow.',
+                'invalid_provider_selection' => "Invalid selection. Please choose a provider by replying with their number:\n{{provider_list}}",
+                'flow_completed' => 'Thank you! We have received your information.',
+            ];
+            $template = $defaults[$key] ?? 'An unexpected error occurred.';
+        }
+
+        foreach ($replacements as $k => $v) {
+            $template = str_replace("{{{$k}}}", (string) $v, $template);
+        }
+
+        return $template;
+    }
+
     private function getComponentClass(string $key): ?string
     {
         $map = [
@@ -404,7 +311,6 @@ class WhatsAppMessageHandler
             'image' => \App\FlowComponents\Image::class,
             'date_picker' => \App\FlowComponents\DatePicker::class,
         ];
-
         return $map[$key] ?? null;
     }
 
@@ -416,65 +322,28 @@ class WhatsAppMessageHandler
     private function pushHistory(WhatsappSession $s, string $event, array $meta = []): void
     {
         $history = (array) ($s->flow_history ?? []);
-        $history[] = [
-            'at' => now()->toIso8601String(),
-            'event' => $event,
-            'screen' => $s->current_screen ?? null,
-            'meta' => $meta,
-        ];
-
+        $history[] = ['at' => now()->toIso8601String(), 'event' => $event, 'screen' => $s->current_screen ?? null, 'meta' => $meta];
         $s->flow_history = $history;
         $s->save();
     }
 
     private function normalizeScreens(array $screens): array
     {
-        $isList = array_is_list($screens);
-        if ($isList) {
-            return array_map(function ($s) {
-                if (is_array($s)) {
-                    $s['id'] = $s['id'] ?? ($s['data']['id'] ?? null);
-                }
-
-                return $s;
-            }, $screens);
+        if (array_is_list($screens)) {
+            return array_map(fn ($s) => is_array($s) ? array_merge($s, ['id' => $s['id'] ?? ($s['data']['id'] ?? null)]) : $s, $screens);
         }
-        $out = [];
-        foreach ($screens as $key => $s) {
-            $s = is_array($s) ? $s : [];
-            $s['id'] = $s['id'] ?? (string) $key;
-            $out[] = $s;
-        }
-
-        return $out;
+        return collect($screens)->map(fn ($s, $key) => is_array($s) ? array_merge($s, ['id' => $s['id'] ?? (string) $key]) : ['id' => (string) $key])->values()->all();
     }
 
-    /**
-     * Very tolerant extraction of a plain text string from a screen config.
-     * Supports both legacy and modern shapes.
-     */
     private function extractPlainText(array $screen, ?string $errorMessage = null): string
     {
-        // If an error is present, prefix it to make it visible
         $prefix = $errorMessage ? ('⚠️ '.$errorMessage."\n\n") : '';
-
-        // Modern shape: type=text_body, data.text
         if (($screen['type'] ?? null) === 'text_body') {
-            $text = (string) ($screen['data']['text'] ?? '...');
-
-            return $prefix.$text;
+            return $prefix . ((string) ($screen['data']['text'] ?? '...'));
         }
-
-        // Legacy shape: type=text, message
         if (($screen['type'] ?? null) === 'text') {
-            $text = (string) ($screen['message'] ?? '...');
-
-            return $prefix.$text;
+            return $prefix . ((string) ($screen['message'] ?? '...'));
         }
-
-        // Other components: show something readable
-        $id = $screen['id'] ?? 'screen';
-
-        return $prefix."Continue: {$id}";
+        return $prefix . "Continue: {".($screen['id'] ?? 'screen')."}";
     }
 }

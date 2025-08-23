@@ -64,6 +64,36 @@ class BuildFlow extends EditRecord
                             ])
                             ->collapsible()
                             ->itemLabel(fn (array $state): ?string => $componentOptions[$state['type']] ?? ''),
+
+                        Repeater::make('actions')
+                            ->label('Actions (on screen entry)')
+                            ->schema([
+                                Select::make('type')
+                                    ->label('Action Type')
+                                    ->options([
+                                        'api_call' => 'API Call',
+                                    ])
+                                    ->live()
+                                    ->required(),
+                                Forms\Components\Group::make()
+                                    ->schema(function (Get $get) {
+                                        if ($get('type') !== 'api_call') {
+                                            return [];
+                                        }
+                                        return [
+                                            Forms\Components\TextInput::make('config.url')->label('URL')->required(),
+                                            Forms\Components\Select::make('config.method')->options(['GET', 'POST', 'PUT', 'DELETE'])->default('POST'),
+                                            Forms\Components\KeyValue::make('config.headers')->label('Headers'),
+                                            Forms\Components\KeyValue::make('config.body')->label('Body/Payload'),
+                                            Forms\Components\TextInput::make('config.save_to')->label('Save Response To')->default('api_response'),
+                                            Forms\Components\TextInput::make('config.on_success')->label('Next Screen on Success'),
+                                            Forms\Components\TextInput::make('config.on_failure')->label('Next Screen on Failure'),
+                                        ];
+                                    })
+                            ])
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): ?string => $state['type'] ?? ''),
+
                         TextInput::make('footer_label')->label('Footer Button Label')->required(),
                         Select::make('next_screen_id')
                             ->label('Next Screen (on Footer click)')
