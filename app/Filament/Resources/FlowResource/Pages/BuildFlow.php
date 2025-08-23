@@ -11,6 +11,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,6 +22,8 @@ class BuildFlow extends EditRecord
     protected static ?string $title = 'Flow Builder';
 
     protected static string $view = 'filament.resources.flow-resource.pages.build-flow';
+
+    public int $activeScreenIndex = 0;
 
     public function form(Form $form): Form
     {
@@ -108,7 +111,15 @@ class BuildFlow extends EditRecord
                     ])
                     ->reorderableWithDragAndDrop()
                     ->collapsible()
-                    ->itemLabel(fn (array $state): ?string => $state['title'] ?? null),
+                    ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
+                    ->addAction(fn (Action $action, Get $get, $state) => $action
+                        ->label('Preview')
+                        ->icon('heroicon-o-eye')
+                        ->color(fn() => $this->activeScreenIndex == array_search($get('.'), $state) ? 'primary' : 'gray')
+                        ->action(function () use ($get, $state) {
+                            $this->activeScreenIndex = array_search($get('.'), $state);
+                        })
+                    ),
             ])
             ->model($this->record)
             ->statePath('data');

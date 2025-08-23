@@ -2,8 +2,10 @@
 
 namespace App\Services\Flows;
 
+use App\Models\ProviderCredential;
 use App\Models\WhatsappSession;
 use Illuminate\Http\Client\Factory as HttpClient;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 
 class FlowActionService
@@ -42,6 +44,7 @@ class FlowActionService
     {
         $config = $action['config'] ?? [];
         $context = $session->context ?? [];
+        $provider = $session->provider;
 
         // Interpolate URL, headers, and body
         $method = strtolower($config['method'] ?? 'POST');
@@ -52,7 +55,29 @@ class FlowActionService
 
         if (! $url) {
             Log::warning('api_call action is missing a URL', ['session_id' => $session->id]);
-            return $action['on_failure'] ?? null;
+            return $config['on_failure'] ?? null;
+        }
+
+        // Automatically add auth headers from provider credentials
+        if ($provider && $provider->auth_type !== 'none') {
+            $keyName = $provider->auth_type === 'bearer' ? 'bearer_token' : 'api_key';
+            $credential = ProviderCredential::where('provider_id', $provider->id)
+                ->where('key_name', $keyName)
+                ->first();
+
+            if ($credential) {
+                try {
+                    $secret = Crypt::decryptString($credential->secret_encrypted);
+                    if ($provider->auth_type === 'bearer') {
+                        $headers['Authorization'] = "Bearer {$secret}";
+                    } elseif ($provider->auth_type === 'apikey') {
+                        // Assuming the key name is the header name, e.g., X-API-Key
+                        $headers[$credential->key_name] = $secret;
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('Failed to decrypt provider credential', ['credential_id' => $credential->id]);
+                }
+            }
         }
 
         try {
@@ -68,12 +93,21 @@ class FlowActionService
             ]);
 
             if ($response->failed()) {
+                $status = $response->status();
                 Log::error('api_call action failed', [
                     'session_id' => $session->id,
-                    'status' => $response->status(),
+                    'status' => $status,
                     'response' => $response->body(),
                 ]);
-                return $config['on_failure'] ?? null;
+
+                // Save error response to context if configured
+                if ($saveErrorTo = $config['save_error_to'] ?? null) {
+                    $context[$saveErrorTo] = $response->json();
+                    $session->update(['context' => $context]);
+                }
+
+                // Return screen for specific status code, or generic failure screen
+                return $config["on_error_{$status}"] ?? $config['on_failure'] ?? null;
             }
 
             $context[$saveTo] = $response->json();
@@ -88,7 +122,7 @@ class FlowActionService
                 'session_id' => $session->id,
                 'error' => $e->getMessage(),
             ]);
-            return $action['on_failure'] ?? null;
+            return $config['on_failure'] ?? null;
         }
     }
 

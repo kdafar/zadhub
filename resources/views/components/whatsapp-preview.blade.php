@@ -1,9 +1,9 @@
-@props(['data'])
+@props(['data', 'activeScreenIndex'])
 
 @php
     // The form data is nested under a 'data' key when it comes from the builder
     $flowData = $data['data'] ?? $data;
-    $screen = ($flowData['screens'] ?? [])[0] ?? null;
+    $screen = ($flowData['screens'] ?? [])[$activeScreenIndex ?? 0] ?? null;
 @endphp
 
 <div class="bg-gray-800 rounded-lg p-4 sticky top-4">
