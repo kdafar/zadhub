@@ -20,33 +20,56 @@ class WhatsAppWebhookTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Config::set('services.whatsapp.app_secret', 'test-secret');
+        // Keep a global fallback for tests that might not create a provider meta
+        Config::set('services.whatsapp.app_secret', 'global-test-secret');
+        Config::set('services.whatsapp.verify_token', 'global-verify-token');
         Config::set('services.whatsapp.fake', true);
 
-        // Mock the factory to ensure it returns the fake service
         $this->app->singleton(WhatsAppApiServiceFactory::class, function () {
             return new class extends WhatsAppApiServiceFactory
             {
                 public function make(?\App\Models\Provider $provider = null): \App\Services\WhatsAppApiService|\App\Services\WhatsAppApiServiceFake
                 {
-                    // We return a new fake instance that can be spied on or mocked
                     return new \App\Services\WhatsAppApiServiceFake;
                 }
             };
         });
     }
 
+    public function test_it_verifies_a_webhook_using_provider_specific_token()
+    {
+        // 1. Arrange
+        $provider = Provider::factory()->create([
+            'meta' => [
+                'verify_token' => 'provider-specific-token',
+            ],
+        ]);
+
+        $challenge = 'challenge-string';
+
+        // 2. Act
+        $response = $this->getJson("/api/whatsapp/webhook/{$provider->slug}?hub.mode=subscribe&hub.verify_token=provider-specific-token&hub.challenge={$challenge}");
+
+        // 3. Assert
+        $response->assertStatus(200);
+        $response->assertSee($challenge);
+    }
+
     public function test_it_handles_a_valid_incoming_webhook_and_starts_a_flow()
     {
         // 1. Arrange
-        $serviceType = ServiceType::factory()->create(['code' => 'start']);
-        $provider = Provider::factory()->create(['service_type_id' => $serviceType->id]);
+        $provider = Provider::factory()->create([
+            'meta' => [
+                'app_secret' => 'provider-specific-secret',
+            ],
+        ]);
         $flow = Flow::factory()->create([
             'provider_id' => $provider->id,
             'trigger_keyword' => 'start',
         ]);
         $flowVersion = FlowVersion::factory()->create([
             'flow_id' => $flow->id,
+            'provider_id' => $provider->id,
             'status' => 'published',
             'definition' => [
                 'start_screen' => 'WELCOME',
@@ -59,7 +82,6 @@ class WhatsAppWebhookTest extends TestCase
             'flow_version_id' => $flowVersion->id,
             'meta_flow_id' => 'meta-flow-123',
         ]);
-
         FlowTrigger::factory()->create([
             'keyword' => 'start',
             'flow_version_id' => $flowVersion->id,
@@ -67,15 +89,15 @@ class WhatsAppWebhookTest extends TestCase
         ]);
 
         $payload = $this->createWebhookPayload('12345', '98765', 'start');
+        $signature = hash_hmac('sha256', json_encode($payload), 'provider-specific-secret');
 
         // 2. Act
-        $response = $this->postJson('/api/whatsapp/webhook', $payload, [
-            'X-Hub-Signature-256' => 'sha256='.hash_hmac('sha256', json_encode($payload), config('services.whatsapp.app_secret')),
+        $response = $this->postJson("/api/whatsapp/webhook/{$provider->slug}", $payload, [
+            'X-Hub-Signature-256' => 'sha256=' . $signature,
         ]);
 
         // 3. Assert
-        $response->assertStatus(200);
-        $response->assertJson(['status' => 'success']);
+        $response->assertStatus(204); // No Content is the new success response
 
         $this->assertDatabaseHas('whatsapp_sessions', [
             'phone' => '98765',
@@ -87,11 +109,12 @@ class WhatsAppWebhookTest extends TestCase
 
     public function test_it_rejects_invalid_signatures()
     {
-        $response = $this->postJson('/api/whatsapp/webhook', ['foo' => 'bar'], [
+        $provider = Provider::factory()->create();
+        $response = $this->postJson("/api/whatsapp/webhook/{$provider->slug}", ['foo' => 'bar'], [
             'X-Hub-Signature-256' => 'sha256=invalid_signature',
         ]);
 
-        $response->assertStatus(403);
+        $response->assertStatus(401);
     }
 
     protected function createWebhookPayload(string $phoneNumberId, string $from, string $text): array
