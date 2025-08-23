@@ -95,7 +95,7 @@ class ProviderResource extends Resource
                 ]),
 
             Forms\Components\Section::make('Configuration')
-                ->columns(2)
+                ->columns(1)
                 ->schema([
                     Forms\Components\KeyValue::make('locale_defaults')
                         ->addButtonLabel('Add default')
@@ -103,6 +103,10 @@ class ProviderResource extends Resource
                     Forms\Components\KeyValue::make('feature_flags')
                         ->addButtonLabel('Add flag')
                         ->helperText('Feature switches per provider.'),
+                    Forms\Components\KeyValue::make('meta')
+                        ->label('Meta Configuration')
+                        ->addButtonLabel('Add Meta Field')
+                        ->helperText('Provider-specific settings like app_secret, verify_token, flow IDs, etc.'),
                 ]),
         ]);
     }

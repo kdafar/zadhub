@@ -15,6 +15,7 @@ use App\Services\WhatsAppApiService;
 use App\Services\WhatsAppApiServiceFactory;
 use App\Services\WhatsAppMessageHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Mockery;
 use Tests\TestCase;
 
@@ -136,6 +137,10 @@ class WhatsAppMessageHandlerTest extends TestCase
     public function test_it_executes_an_api_call_action_and_redirects()
     {
         // 1. Arrange
+        Http::fake([
+            'https://example.com/api/data' => Http::response(['user_id' => 123, 'name' => 'John Doe']),
+        ]);
+
         $flow = Flow::factory()->create();
         $flowVersion = FlowVersion::factory()->create([
             'flow_id' => $flow->id,
@@ -146,7 +151,15 @@ class WhatsAppMessageHandlerTest extends TestCase
                     'FETCH_DATA' => [
                         'id' => 'FETCH_DATA',
                         'actions' => [
-                            ['type' => 'api_call', 'on_success' => 'SHOW_DATA'],
+                            [
+                                'type' => 'api_call',
+                                'config' => [
+                                    'url' => 'https://example.com/api/data',
+                                    'body' => ['session_id' => '{{session.id}}'],
+                                    'save_to' => 'user_data',
+                                ],
+                                'on_success' => 'SHOW_DATA',
+                            ],
                         ],
                     ],
                     'SHOW_DATA' => ['id' => 'SHOW_DATA'],
@@ -161,19 +174,18 @@ class WhatsAppMessageHandlerTest extends TestCase
 
         $payload = $this->createWebhookPayload('123', '555', 'action');
 
-        // Mock dependencies
+        // Mock some dependencies, but use the real FlowActionService
         $apiServiceFactoryMock = Mockery::mock(WhatsAppApiServiceFactory::class);
         $flowRendererMock = Mockery::mock(FlowRenderer::class);
         $triggerResolverMock = Mockery::mock(TriggerResolver::class);
-        $actionServiceMock = Mockery::mock(FlowActionService::class);
+        $actionService = $this->app->make(FlowActionService::class);
 
         $triggerResolverMock->shouldReceive('resolve')->andReturn($trigger);
-        $actionServiceMock->shouldReceive('executeActions')->once()->andReturn('SHOW_DATA');
         $apiServiceFactoryMock->shouldReceive('make')->andReturn(Mockery::mock(WhatsAppApiService::class));
         $flowRendererMock->shouldReceive('renderScreen');
 
         // 2. Act
-        $handler = new WhatsAppMessageHandler($apiServiceFactoryMock, $flowRendererMock, $triggerResolverMock, $actionServiceMock);
+        $handler = new WhatsAppMessageHandler($apiServiceFactoryMock, $flowRendererMock, $triggerResolverMock, $actionService);
         $handler->process($payload);
 
         // 3. Assert
@@ -181,6 +193,14 @@ class WhatsAppMessageHandlerTest extends TestCase
             'phone' => '555',
             'current_screen' => 'SHOW_DATA',
         ]);
+
+        $session = WhatsappSession::where('phone', '555')->first();
+        $this->assertEquals(['user_id' => 123, 'name' => 'John Doe'], $session->context['user_data']);
+
+        Http::assertSent(function ($request) {
+            return $request->url() == 'https://example.com/api/data' &&
+                   $request['session_id'] == WhatsappSession::where('phone', '555')->first()->id;
+        });
     }
 
     public function test_it_interpolates_context_variables_into_the_next_screen()

@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 
 class TriggerResolver
 {
-    public function resolve(?string $text): ?FlowTrigger
+    public function resolve(?string $text, ?int $providerId = null): ?FlowTrigger
     {
         if (! $text) {
             return null;
@@ -22,6 +22,7 @@ class TriggerResolver
         // match case-insensitively
         return FlowTrigger::query()
             ->whereRaw('LOWER(keyword) = ?', [mb_strtolower($first)])
+            ->when($providerId, fn ($query) => $query->where('provider_id', $providerId))
             ->where('is_active', true)
             ->orderBy('priority')   // lowest number first
             ->orderByDesc('id')

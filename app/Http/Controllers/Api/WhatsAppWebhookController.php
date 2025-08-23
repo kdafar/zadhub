@@ -10,22 +10,21 @@ use Illuminate\Support\Str;
 
 class WhatsAppWebhookController extends Controller
 {
-    public function handle(Request $request, WhatsAppMessageHandler $messageHandler, ?string $appKey = null)
+    public function handle(Request $request, WhatsAppMessageHandler $messageHandler, \App\Models\Provider $provider)
     {
         // Correlation id for this request (easy grepping)
         $rid = (string) Str::uuid();
 
         // Basic request context (don’t log raw body or secrets)
         $ctx = [
-            'rid'      => $rid,
-            'method'   => $request->method(),
-            'host'     => $request->getHost(),
-            'path'     => $request->getPathInfo(),
-            'appKey'   => $appKey, // set by route defaults if you split endpoints
-            'ip'       => $request->ip(),
-            'xfwd_for' => $request->header('X-Forwarded-For'),
-            'xfwd_host'=> $request->header('X-Forwarded-Host'),
-            'ua'       => $request->userAgent(),
+            'rid'           => $rid,
+            'provider_id'   => $provider->id,
+            'provider_slug' => $provider->slug,
+            'method'        => $request->method(),
+            'host'          => $request->getHost(),
+            'path'          => $request->getPathInfo(),
+            'ip'            => $request->ip(),
+            'ua'            => $request->userAgent(),
         ];
 
         Log::info('WA webhook: request start', $ctx);
@@ -36,7 +35,7 @@ class WhatsAppWebhookController extends Controller
             $token     = $this->param($request, ['hub_verify_token', 'hub.verify_token']);
             $challenge = $this->param($request, ['hub_challenge', 'hub.challenge']);
 
-            $expectedToken = (string) config('services.whatsapp.verify_token');
+            $expectedToken = (string) data_get($provider->meta, 'verify_token', config('services.whatsapp.verify_token'));
 
             Log::info('WA webhook: GET verify received', $ctx + [
                 'mode'          => $mode,
@@ -57,7 +56,7 @@ class WhatsAppWebhookController extends Controller
         // === POST: Incoming events ===
         if ($request->isMethod('post')) {
             $signatureHeader = (string) $request->header('X-Hub-Signature-256'); // "sha256=..."
-            $appSecret       = (string) config('services.whatsapp.app_secret');
+            $appSecret       = (string) data_get($provider->meta, 'app_secret', config('services.whatsapp.app_secret'));
 
             Log::info('WA webhook: POST received (pre-verify)', $ctx + [
                 'sig_present' => $signatureHeader !== '',
@@ -92,8 +91,9 @@ class WhatsAppWebhookController extends Controller
             Log::info('WA webhook: payload meta', $ctx + $meta);
 
             try {
-                $messageHandler->process($payload);
-            } catch (\Throwable $e) {
+                // Pass the provider to the handler
+                $messageHandler->process($payload, $provider);
+            } catch (\\\Throwable $e) {
                 Log::error('WA webhook: handler error', $ctx + [
                     'exception' => $e->getMessage(),
                     'trace_top' => collect(explode("\n", $e->getTraceAsString()))->take(5)->implode("\n"),

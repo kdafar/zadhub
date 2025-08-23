@@ -23,7 +23,7 @@ class WhatsAppMessageHandler
         protected FlowActionService $actionService
     ) {}
 
-    public function process(array $payload): void
+    public function process(array $payload, Provider $provider): void
     {
         // Avoid logging the full payload which can cause serialization errors with deep objects
         Log::info('Incoming WhatsApp message received.');
@@ -35,10 +35,15 @@ class WhatsAppMessageHandler
             return;
         }
 
+        // Find or create the session, ensuring it's linked to the correct provider.
         $session = WhatsappSession::firstOrCreate(
-            ['phone' => $from],
+            ['phone' => $from, 'provider_id' => $provider->id],
             ['status' => 'active', 'locale' => 'en', 'context' => []]
         );
+
+        if (! $session->provider) {
+            $session->provider()->associate($provider)->save();
+        }
 
         $session->update(['last_interacted_at' => now()]);
 
@@ -63,36 +68,32 @@ class WhatsAppMessageHandler
             return;
         }
 
-        if (($session->context['state'] ?? null) === 'selecting_provider') {
-            $this->handleProviderSelection($session, $incomingText);
-
+        // The provider is already associated with the session from the webhook controller.
+        $provider = $session->provider;
+        if (! $provider) {
+            Log::error("Could not handle text message: Session {$session->id} has no provider.");
             return;
         }
 
-        $trigger = $this->triggers->resolve($incomingText);
+        // Resolve a trigger scoped to the current provider.
+        $trigger = $this->triggers->resolve($incomingText, $provider->id);
+
         if ($trigger) {
             $flowVersion = $trigger->use_latest_published
-                ? ($trigger->provider ?? $trigger->serviceType)?->flows()->first()?->liveVersion
+                ? $provider->flows()->first()?->liveVersion
                 : $trigger->flowVersion;
 
             if ($flowVersion && $flowVersion->flow) {
-                $session->provider()->associate($flowVersion->flow->provider)->save();
                 $this->startFlow($session, $flowVersion->flow);
-
                 return;
             }
         }
 
         // Fallback: If no flow or service is found, send a generic error.
-        $providerForSending = $session->provider ?? Provider::where('is_active', true)->first();
-        if ($providerForSending) {
-            $this->apiServiceFactory->make($providerForSending)->sendTextMessage(
-                $session->phone,
-                "I couldn't understand your message. Please reply with a valid keyword to continue."
-            );
-        } else {
-            Log::error("No active provider available to send fallback message to {$session->phone}.");
-        }
+        $this->apiServiceFactory->make($provider)->sendTextMessage(
+            $session->phone,
+            "I couldn't understand your message. Please reply with a valid keyword to continue."
+        );
     }
 
     private function handleProviderSelection(WhatsappSession $session, string $text): void
