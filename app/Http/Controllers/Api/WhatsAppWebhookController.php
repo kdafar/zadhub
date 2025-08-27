@@ -91,14 +91,10 @@ class WhatsAppWebhookController extends Controller
             Log::info('WA webhook: payload meta', $ctx + $meta);
 
             try {
-                // Pass the provider to the handler
                 $messageHandler->process($payload, $provider);
             } catch (\Throwable $e) {
-                Log::error('WA webhook: handler error', $ctx + [
-                    'exception' => $e->getMessage(),
-                    'trace_top' => collect(explode("\n", $e->getTraceAsString()))->take(5)->implode("\n"),
-                ]);
-                return response()->json(['status' => 'error', 'message' => 'Internal Server Error'], 500);
+                // Explicitly dump and die for debugging this specific issue.
+                dd($e);
             }
 
             Log::info('WA webhook: processed OK', $ctx);
