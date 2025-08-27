@@ -283,7 +283,9 @@ class WhatsAppMessageHandler
     private function sendSystemMessage(WhatsappSession $session, string $key, array $replacements = []): void
     {
         $message = $this->getSystemMessage($session, $key, $replacements);
+        Log::info('Preparing to send system message.', ['session_id' => $session->id, 'key' => $key, 'message' => $message, 'has_provider' => !!$session->provider]);
         if ($message && $session->provider) {
+            Log::info('Provider and message OK, calling API service factory.', ['session_id' => $session->id]);
             $this->apiServiceFactory->make($session->provider)->sendTextMessage($session->phone, $message);
         }
     }
