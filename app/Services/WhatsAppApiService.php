@@ -70,10 +70,21 @@ class WhatsAppApiService
 
             $response = Http::withToken($this->token)->post($url, $basePayload + $payload);
 
+            // Log the full response from Meta for debugging
+            Log::info('WhatsApp API Response:', [
+                'status' => $response->status(),
+                'json' => $response->json(),
+            ]);
+
             if ($response->failed()) {
                 Log::error('WhatsApp API request failed.', [
                     'status' => $response->status(),
                     'body' => $response->body(),
+                ]);
+            } elseif ($response->json('error')) {
+                Log::error('WhatsApp API returned an error.', [
+                    'status' => $response->status(),
+                    'error' => $response->json('error'),
                 ]);
             } else {
                 Log::info('WhatsApp message sent successfully.', ['to' => $to]);
