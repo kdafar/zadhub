@@ -50,15 +50,25 @@ class WhatsAppApiService
         ]);
     }
 
-    private function sendMessage(string $to, array $payload): void
+    public function markMessageAsRead(string $messageId): void
+    {
+        $this->sendMessage(null, [
+            'status' => 'read',
+            'message_id' => $messageId,
+        ]);
+    }
+
+    private function sendMessage(?string $to, array $payload): void
     {
         try {
             $url = "https://graph.facebook.com/v19.0/{$this->phoneNumberId}/messages";
 
-            $response = Http::withToken($this->token)->post($url, [
-                'messaging_product' => 'whatsapp',
-                'to' => $to,
-            ] + $payload);
+            $basePayload = ['messaging_product' => 'whatsapp'];
+            if ($to) {
+                $basePayload['to'] = $to;
+            }
+
+            $response = Http::withToken($this->token)->post($url, $basePayload + $payload);
 
             if ($response->failed()) {
                 Log::error('WhatsApp API request failed.', [

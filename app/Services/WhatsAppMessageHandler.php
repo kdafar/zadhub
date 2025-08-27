@@ -298,7 +298,7 @@ class WhatsAppMessageHandler
 
         if (! $template) {
             $defaults = [
-                'fallback' => "I couldn't understand your message. Please reply with a valid keyword to continue.",
+                'fallback' => "Welcome! Please send a keyword like 'menu' or 'order' to get started. If you're unsure, type 'help' for more options.",
                 'provider_not_ready' => 'Sorry, this provider does not have an active flow.',
                 'invalid_provider_selection' => "Invalid selection. Please choose a provider by replying with their number:\n{{provider_list}}",
                 'flow_completed' => 'Thank you! We have received your information.',

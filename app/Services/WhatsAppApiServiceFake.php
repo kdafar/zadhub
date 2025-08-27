@@ -31,4 +31,9 @@ class WhatsAppApiServiceFake
     {
         Log::channel('single')->info('[FAKE WA] sendList', compact('to', 'header', 'body', 'rows', 'footer'));
     }
+
+    public function markMessageAsRead(string $messageId): void
+    {
+        Log::channel('single')->info('[FAKE WA] markAsRead', compact('messageId'));
+    }
 }
