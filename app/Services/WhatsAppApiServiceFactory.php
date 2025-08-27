@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Provider;
+use Illuminate\Support\Facades\Log;
 
 class WhatsAppApiServiceFactory
 {
@@ -14,16 +15,17 @@ class WhatsAppApiServiceFactory
             return new WhatsAppApiServiceFake;
         }
 
-        if (! $provider) {
-            $token = config('services.whatsapp.api_token');
-            $phoneId = config('services.whatsapp.phone_number_id');
-        } else {
-            $token = $provider->api_token;
-            $phoneId = $provider->whatsapp_phone_number_id;
-        }
+        $token = $provider?->api_token;
+        $phoneId = $provider?->whatsapp_phone_number_id;
 
         if (empty($token) || empty($phoneId)) {
-            throw new \Exception('WhatsApp API credentials are not configured.');
+            Log::critical('WhatsApp API credentials missing for provider.', [
+                'provider_id' => $provider?->id,
+                'has_token' => !empty($token),
+                'has_phone_id' => !empty($phoneId),
+            ]);
+
+            throw new \Exception('WhatsApp API credentials are not configured for provider ID: ' . $provider?->id);
         }
 
         return new WhatsAppApiService($token, $phoneId);
