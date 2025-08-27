@@ -133,11 +133,13 @@ class WhatsAppMessageHandler
             $liveVersion = $flow->liveVersion()->with('metaFlow')->first();
             if (! $liveVersion) {
                 Log::error("Flow ID {$flow->id} has no published version.", ['session_id' => $session->id]);
+                $this->sendSystemMessage($session, 'flow_not_ready');
                 return;
             }
 
             if (! $liveVersion->metaFlow?->meta_flow_id) {
                 Log::error("Flow Version ID {$liveVersion->id} has not been published to Meta.", ['session_id' => $session->id]);
+                $this->sendSystemMessage($session, 'flow_not_ready');
                 return;
             }
 
@@ -148,6 +150,7 @@ class WhatsAppMessageHandler
 
             if (! $firstScreen) {
                 Log::error("Flow version ID {$liveVersion->id} has no valid start screen.", ['session_id' => $session->id]);
+                $this->sendSystemMessage($session, 'flow_not_ready');
                 return;
             }
 
@@ -299,6 +302,7 @@ class WhatsAppMessageHandler
                 'provider_not_ready' => 'Sorry, this provider does not have an active flow.',
                 'invalid_provider_selection' => "Invalid selection. Please choose a provider by replying with their number:\n{{provider_list}}",
                 'flow_completed' => 'Thank you! We have received your information.',
+                'flow_not_ready' => 'We are sorry, but this service is not available at the moment. Please try again later.',
             ];
             $template = $defaults[$key] ?? 'An unexpected error occurred.';
         }
