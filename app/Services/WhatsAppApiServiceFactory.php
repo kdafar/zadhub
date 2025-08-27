@@ -28,6 +28,6 @@ class WhatsAppApiServiceFactory
             throw new \Exception('WhatsApp API credentials are not configured for provider ID: ' . $provider?->id);
         }
 
-        return new WhatsAppApiService($token, $phoneId);
+        return new \App\Services\WhatsAppApiService($token, $phoneId);
     }
 }
