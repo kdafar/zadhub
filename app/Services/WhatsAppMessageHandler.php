@@ -27,10 +27,18 @@ class WhatsAppMessageHandler
     {
         Log::info('Incoming WhatsApp message received.');
 
-        $messageValue = $payload['entry'][0]['changes'][0]['value']['messages'][0] ?? null;
+        $change = $payload['entry'][0]['changes'][0]['value'] ?? null;
+        $messageValue = $change['messages'][0] ?? null;
         $from = $messageValue['from'] ?? null;
 
-        if (! $from || ! $messageValue) {
+        if (!$change) {
+            Log::warning('Webhook received without a "value" object.', ['payload' => $payload]);
+            return;
+        }
+
+        // Handle non-message events like status updates, quality updates etc.
+        if (!$messageValue || !$from) {
+            Log::info('Received a non-message webhook event.', ['event' => $change['event'] ?? 'unknown', 'provider_id' => $provider->id]);
             return;
         }
 
