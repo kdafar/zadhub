@@ -35,10 +35,20 @@ class WhatsAppApiService
         }
     }
 
-    public function sendImage(string $to, string $linkOrId, string $caption = ''): void
-    {
-        $this->sendMedia(new ImageMessage($linkOrId, $caption), $to);
+public function sendImage(string $to, string $linkOrId, string $caption = ''): void
+{
+    // 1. Create the ImageMessage with only the link or ID
+    $imageMessage = new ImageMessage($linkOrId);
+
+    // 2. If a caption exists, set it on the object
+    if (!empty($caption)) {
+        $imageMessage->setCaption($caption);
     }
+
+    // 3. Pass the fully constructed object to the sendMedia method
+    $this->sendMedia($imageMessage, $to);
+}
+
 
     public function sendDocument(string $to, string $linkOrId, string $filename, string $caption = ''): void
     {

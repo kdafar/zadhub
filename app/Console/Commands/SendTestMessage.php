@@ -6,6 +6,7 @@ use App\Models\Provider;
 use App\Services\WhatsAppApiServiceFactory;
 use Illuminate\Console\Command;
 use Netflie\WhatsAppCloudApi\Message\Template\Component;
+use Illuminate\Support\Facades\Log;
 
 class SendTestMessage extends Command
 {

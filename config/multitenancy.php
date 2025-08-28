@@ -10,10 +10,9 @@ use Spatie\Multitenancy\Actions\MakeQueueTenantAwareAction;
 use Spatie\Multitenancy\Actions\MakeTenantCurrentAction;
 use Spatie\Multitenancy\Actions\MigrateTenantAction;
 use Spatie\Multitenancy\Models\Tenant;
-
-return [
-    use App\Models\Provider;
+use App\Models\Provider;
 use App\Multitenancy\ProviderFromRouteTenantFinder;
+
 
 return [
     /*
@@ -78,17 +77,16 @@ return [
      * If you want to prevent certain domains from being resolved as tenants,
      * you can list them here.
      */
-    'forbidden_domains' => [
+'forbidden_domains' => [
 
-    ],
-];
+],
 
-    /*
-     * These fields are used by tenant:artisan command to match one or more tenant.
-     */
-    'tenant_artisan_search_fields' => [
-        'id',
-    ],
+/*
+ * These fields are used by tenant:artisan command to match one or more tenant.
+ */
+'tenant_artisan_search_fields' => [
+    'id',
+],
 
     /*
      * These tasks will be performed when switching tenants.

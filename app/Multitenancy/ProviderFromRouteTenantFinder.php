@@ -4,22 +4,16 @@ namespace App\Multitenancy;
 
 use App\Models\Provider;
 use Illuminate\Http\Request;
-use Spatie\Multitenancy\Contracts\Tenant;
+use Spatie\Multitenancy\Contracts\IsTenant;
 use Spatie\Multitenancy\TenantFinder\TenantFinder;
 
 class ProviderFromRouteTenantFinder extends TenantFinder
 {
-    public function findForRequest(Request $request): ?Tenant
+    public function findForRequest(Request $request): ?IsTenant
     {
-        if ($request->route() && $request->route()->hasParameter('provider')) {
-            // The route model binding handles the lookup by slug automatically.
-            $provider = $request->route()->parameter('provider');
+        // expects route model binding: {provider} resolves to App\Models\Provider
+        $provider = $request->route()?->parameter('provider');
 
-            if ($provider instanceof Provider) {
-                return $provider;
-            }
-        }
-
-        return null;
+        return $provider instanceof Provider ? $provider : null;
     }
 }
