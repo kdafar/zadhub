@@ -31,6 +31,11 @@ class MetaFlowsService
             throw new \Exception("Provider is missing Meta credentials (WABA ID or API Token).");
         }
 
+        $categories = $fv->serviceType?->categories;
+        if (empty($categories)) {
+            throw new \Exception("ServiceType for the FlowVersion is missing the 'categories' attribute.");
+        }
+
         // Convert your internal JSON to Meta Flow JSON (keep 1:1 if already compatible)
         $def = $fv->definition;
         if (! is_array($def)) {
@@ -41,6 +46,7 @@ class MetaFlowsService
         $res = Http::withToken($token)
             ->post("{$this->base}/{$wabaId}/flows", [
                 'name' => $fv->name ?: "Flow #{$fv->id}",
+                'categories' => $categories,
                 'flow_json' => json_encode($flowJson, JSON_UNESCAPED_UNICODE),
             ]);
 

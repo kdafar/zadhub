@@ -81,6 +81,10 @@ class ServiceTypeResource extends Resource
                         ->relationship('defaultFlowTemplate', 'name')
                         ->searchable()
                         ->helperText('This flow template will be cloned for new providers of this type.'),
+                    Forms\Components\TagsInput::make('categories')
+                        ->label('Meta Flow Categories')
+                        ->helperText('The business categories for this flow (e.g., UTILITY, MARKETING).')
+                        ->required(),
                 ]),
 
             Forms\Components\Textarea::make('meta')
