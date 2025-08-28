@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Flow;
 use App\Models\FlowTemplate;
+use App\Models\FlowTrigger;
 use App\Models\FlowVersion;
 use App\Models\Provider;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +53,8 @@ class ProviderOnboardingService
                 ]
             );
 
-            // Only clone a version if the flow doesn't have one already.
+            $versionToTrigger = null;
+
             if (! $flow->versions()->exists()) {
                 $newVersion = $this->cloneTemplateVersion($templateVersion, $flow, $template);
 
@@ -60,8 +62,28 @@ class ProviderOnboardingService
                     $flow->forceFill(['live_version_id' => $newVersion->id])->save();
                 }
                 Log::info('Onboarding successful: Cloned new version.', ['flow_id' => $flow->id, 'new_version_id' => $newVersion->id]);
+                $versionToTrigger = $newVersion;
             } else {
                 Log::info('Onboarding check: Flow already exists with versions.', ['flow_id' => $flow->id]);
+                $versionToTrigger = $flow->liveVersion()->first() ?? $flow->versions()->latest('id')->first();
+            }
+
+            if ($versionToTrigger) {
+                FlowTrigger::updateOrCreate(
+                    [
+                        'keyword' => $flow->trigger_keyword,
+                        'provider_id' => $provider->id,
+                    ],
+                    [
+                        'service_type_id' => $provider->service_type_id,
+                        'flow_version_id' => $versionToTrigger->id,
+                        'use_latest_published' => true,
+                        'is_active' => true,
+                    ]
+                );
+                Log::info('Onboarding: Ensured FlowTrigger exists and is up-to-date.', ['flow_id' => $flow->id, 'trigger_keyword' => $flow->trigger_keyword]);
+            } else {
+                Log::warning('Onboarding: Could not find a version for the flow, so no trigger was created.', ['flow_id' => $flow->id]);
             }
 
             return $flow->fresh();

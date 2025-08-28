@@ -60,7 +60,6 @@ class WhatsAppApiService
 
     private function sendMessage(?string $to, array $payload): void
     {
-        Log::info('Inside sendMessage method.');
         try {
             $url = "https://graph.facebook.com/v19.0/{$this->phoneNumberId}/messages";
 
