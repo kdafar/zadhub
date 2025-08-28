@@ -21,11 +21,11 @@ class WhatsAppApiServiceFactory
         if (empty($token) || empty($phoneId)) {
             Log::critical('WhatsApp API credentials missing for provider.', [
                 'provider_id' => $provider?->id,
-                'has_token' => !empty($token),
-                'has_phone_id' => !empty($phoneId),
+                'has_token' => ! empty($token),
+                'has_phone_id' => ! empty($phoneId),
             ]);
 
-            throw new \Exception('WhatsApp API credentials are not configured for provider ID: ' . $provider?->id);
+            throw new \Exception('WhatsApp API credentials are not configured for provider ID: '.$provider?->id);
         }
 
         return new \App\Services\WhatsAppApiService($token, $phoneId);

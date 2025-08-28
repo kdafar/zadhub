@@ -7,7 +7,6 @@ use App\Models\FlowTrigger;
 use App\Models\FlowVersion;
 use App\Models\MetaFlow;
 use App\Models\Provider;
-use App\Models\ServiceType;
 use App\Services\WhatsAppApiServiceFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
@@ -93,7 +92,7 @@ class WhatsAppWebhookTest extends TestCase
 
         // 2. Act
         $response = $this->postJson("/api/whatsapp/webhook/{$provider->slug}", $payload, [
-            'X-Hub-Signature-256' => 'sha256=' . $signature,
+            'X-Hub-Signature-256' => 'sha256='.$signature,
         ]);
 
         // 3. Assert

@@ -103,4 +103,9 @@ class Provider extends Model
     {
         return $this->hasMany(Flow::class);
     }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';  // use 'slug' instead of 'id'
+    }
 }

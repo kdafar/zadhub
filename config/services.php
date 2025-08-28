@@ -40,7 +40,7 @@ return [
         'api_base' => env('WHATSAPP_API_BASE', 'https://graph.facebook.com/v20.0'),
         'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
-        'app_secret'   => env('WHATSAPP_APP_SECRET'),
+        'app_secret' => env('WHATSAPP_APP_SECRET'),
         'fake' => env('WHATSAPP_FAKE', true),
         'flow_id' => env('WHATSAPP_FLOW_ID', 'FLOW-TEST-123'),
     ],

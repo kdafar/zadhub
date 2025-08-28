@@ -40,7 +40,7 @@ class FlowResource extends Resource
                     ->default(true),
                 Forms\Components\KeyValue::make('meta')
                     ->label('Meta Data'),
-            ])
+            ]),
         ]);
     }
 

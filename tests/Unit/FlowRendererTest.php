@@ -10,7 +10,7 @@ class FlowRendererTest extends TestCase
     public function test_it_interpolates_variables_in_screen_data()
     {
         // 1. Arrange
-        $renderer = new FlowRenderer();
+        $renderer = new FlowRenderer;
 
         $screenConfig = [
             'id' => 'GREETING',
@@ -42,7 +42,7 @@ class FlowRendererTest extends TestCase
     public function test_it_handles_missing_variables_gracefully()
     {
         // 1. Arrange
-        $renderer = new FlowRenderer();
+        $renderer = new FlowRenderer;
 
         $screenConfig = [
             'id' => 'GREETING',

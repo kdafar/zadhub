@@ -55,6 +55,7 @@ class FlowActionService
 
         if (! $url) {
             Log::warning('api_call action is missing a URL', ['session_id' => $session->id]);
+
             return $config['on_failure'] ?? null;
         }
 
@@ -122,6 +123,7 @@ class FlowActionService
                 'session_id' => $session->id,
                 'error' => $e->getMessage(),
             ]);
+
             return $config['on_failure'] ?? null;
         }
     }

@@ -31,14 +31,16 @@ class WhatsAppMessageHandler
         $messageValue = $change['messages'][0] ?? null;
         $from = $messageValue['from'] ?? null;
 
-        if (!$change) {
+        if (! $change) {
             Log::warning('Webhook received without a "value" object.', ['payload' => $payload]);
+
             return;
         }
 
         // Handle non-message events like status updates, quality updates etc.
-        if (!$messageValue || !$from) {
+        if (! $messageValue || ! $from) {
             Log::info('Received a non-message webhook event.', ['event' => $change['event'] ?? 'unknown', 'provider_id' => $provider->id]);
+
             return;
         }
 
@@ -55,6 +57,7 @@ class WhatsAppMessageHandler
 
         if (isset($messageValue['interactive']['nfm_reply'])) {
             $this->handleFlowReply($session, $messageValue['interactive']['nfm_reply']);
+
             return;
         }
 
@@ -73,6 +76,7 @@ class WhatsAppMessageHandler
         $provider = $session->provider;
         if (! $provider) {
             Log::error("Could not handle text message: Session {$session->id} has no provider.");
+
             return;
         }
 
@@ -85,6 +89,7 @@ class WhatsAppMessageHandler
 
             if ($flowVersion && $flowVersion->flow) {
                 $this->startFlow($session, $flowVersion->flow);
+
                 return;
             }
         }
@@ -99,6 +104,7 @@ class WhatsAppMessageHandler
             $session->context = [];
             $session->save();
             $this->handleTextMessage($session, $text);
+
             return;
         }
 
@@ -114,10 +120,12 @@ class WhatsAppMessageHandler
                 $session->context = [];
                 $session->save();
                 $this->startFlow($session, $defaultFlow);
+
                 return;
             }
 
             $this->sendSystemMessage($session, 'provider_not_ready');
+
             return;
         }
 
@@ -134,12 +142,14 @@ class WhatsAppMessageHandler
             if (! $liveVersion) {
                 Log::error("Flow ID {$flow->id} has no published version.", ['session_id' => $session->id]);
                 $this->sendSystemMessage($session, 'flow_not_ready');
+
                 return;
             }
 
             if (! $liveVersion->metaFlow?->meta_flow_id) {
                 Log::error("Flow Version ID {$liveVersion->id} has not been published to Meta.", ['session_id' => $session->id]);
                 $this->sendSystemMessage($session, 'flow_not_ready');
+
                 return;
             }
 
@@ -151,6 +161,7 @@ class WhatsAppMessageHandler
             if (! $firstScreen) {
                 Log::error("Flow version ID {$liveVersion->id} has no valid start screen.", ['session_id' => $session->id]);
                 $this->sendSystemMessage($session, 'flow_not_ready');
+
                 return;
             }
 
@@ -172,6 +183,7 @@ class WhatsAppMessageHandler
                     $session->update(['current_screen' => $nextId]);
                     $this->pushHistory($session, 'action_redirect', ['to' => $nextId]);
                     $this->executeScreen($session, $nextScreen);
+
                     return;
                 }
             }
@@ -187,6 +199,7 @@ class WhatsAppMessageHandler
         $version = $session->flowVersion()->with('metaFlow')->first();
         if (! $version) {
             Log::warning('No flow_version for session', ['session_id' => $session->id]);
+
             return;
         }
 
@@ -197,6 +210,7 @@ class WhatsAppMessageHandler
 
         if (! $currentScreen) {
             Log::warning('Current screen not found', ['session_id' => $session->id, 'screen' => $session->current_screen]);
+
             return;
         }
 
@@ -212,6 +226,7 @@ class WhatsAppMessageHandler
         if ($validator->fails()) {
             $this->pushHistory($session, 'validation_failed', ['error' => $validator->errors()->first()]);
             $this->sendValidationError($session, $currentScreen, $validator->errors());
+
             return;
         }
 
@@ -231,11 +246,13 @@ class WhatsAppMessageHandler
                     $session->update(['current_screen' => $finalNextId]);
                     $this->pushHistory($session, 'action_redirect', ['to' => $finalNextId]);
                     $this->executeScreen($session, $finalScreen);
+
                     return;
                 }
             }
 
             $this->executeScreen($session, $next);
+
             return;
         }
 
@@ -246,6 +263,7 @@ class WhatsAppMessageHandler
     {
         if (! $session->provider) {
             Log::error("Session {$session->id} has no provider, cannot execute screen.");
+
             return;
         }
 
@@ -256,6 +274,7 @@ class WhatsAppMessageHandler
             if (! $metaFlowId) {
                 Log::error('Flow version missing or not published to Meta.', ['session_id' => $session->id, 'version_id' => $version?->id]);
                 $this->apiServiceFactory->make($session->provider)->sendTextMessage($session->phone, $this->extractPlainText($screenConfig, $errorMessage));
+
                 return;
             }
 
@@ -283,7 +302,7 @@ class WhatsAppMessageHandler
     private function sendSystemMessage(WhatsappSession $session, string $key, array $replacements = []): void
     {
         $message = $this->getSystemMessage($session, $key, $replacements);
-        Log::info('Preparing to send system message.', ['session_id' => $session->id, 'key' => $key, 'message' => $message, 'has_provider' => !!$session->provider]);
+        Log::info('Preparing to send system message.', ['session_id' => $session->id, 'key' => $key, 'message' => $message, 'has_provider' => (bool) $session->provider]);
         if ($message && $session->provider) {
             Log::info('Provider and message OK, calling API service factory.', ['session_id' => $session->id]);
             $this->apiServiceFactory->make($session->provider)->sendTextMessage($session->phone, $message);
@@ -325,6 +344,7 @@ class WhatsAppMessageHandler
             'image' => \App\FlowComponents\Image::class,
             'date_picker' => \App\FlowComponents\DatePicker::class,
         ];
+
         return $map[$key] ?? null;
     }
 
@@ -346,6 +366,7 @@ class WhatsAppMessageHandler
         if (array_is_list($screens)) {
             return array_map(fn ($s) => is_array($s) ? array_merge($s, ['id' => $s['id'] ?? ($s['data']['id'] ?? null)]) : $s, $screens);
         }
+
         return collect($screens)->map(fn ($s, $key) => is_array($s) ? array_merge($s, ['id' => $s['id'] ?? (string) $key]) : ['id' => (string) $key])->values()->all();
     }
 
@@ -353,11 +374,12 @@ class WhatsAppMessageHandler
     {
         $prefix = $errorMessage ? ('⚠️ '.$errorMessage."\n\n") : '';
         if (($screen['type'] ?? null) === 'text_body') {
-            return $prefix . ((string) ($screen['data']['text'] ?? '...'));
+            return $prefix.((string) ($screen['data']['text'] ?? '...'));
         }
         if (($screen['type'] ?? null) === 'text') {
-            return $prefix . ((string) ($screen['message'] ?? '...'));
+            return $prefix.((string) ($screen['message'] ?? '...'));
         }
-        return $prefix . "Continue: {".($screen['id'] ?? 'screen')."}";
+
+        return $prefix.'Continue: {'.($screen['id'] ?? 'screen').'}';
     }
 }

@@ -106,64 +106,73 @@ class FlowTriggerResource extends Resource
                         ->live(),
 
                     Forms\Components\Grid::make(3)->schema([
-    Forms\Components\Select::make('service_type_id')
-        ->label('Service Type')
-        ->relationship('serviceType', 'name')
-        ->getOptionLabelFromRecordUsing(
-            fn (ServiceType $r) => (string) ($r->name
-                ?? $r->name_en
-                ?? $r->name_ar
-                ?? $r->slug
-                ?? "Service Type #{$r->id}")
-        )
-        ->searchable()
-        ->preload()
-        ->native(false)
-        ->live()
-        ->afterStateUpdated(fn (Set $set) => $set('provider_id', null)),
+                        Forms\Components\Select::make('service_type_id')
+                            ->label('Service Type')
+                            ->relationship('serviceType', 'name')
+                            ->getOptionLabelFromRecordUsing(
+                                fn (ServiceType $r) => (string) ($r->name
+                                    ?? $r->name_en
+                                    ?? $r->name_ar
+                                    ?? $r->slug
+                                    ?? "Service Type #{$r->id}")
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(fn (Set $set) => $set('provider_id', null)),
 
-    Forms\Components\Select::make('provider_id')
-        ->label('Provider')
-        ->options(fn (Get $get) => Provider::query()
-            ->when($get('service_type_id'), fn ($q, $st) => $q->where('service_type_id', $st))
-            ->selectRaw("id, COALESCE(name, slug, CONCAT('Provider #', id)) AS label")
-            ->orderBy('label')
-            ->pluck('label', 'id')
-            ->toArray()
-        )
-        ->searchable()
-        ->preload()
-        ->native(false)
-        ->live()
-        ->afterStateUpdated(fn (Set $set) => $set('flow_version_id', null)),
+                        Forms\Components\Select::make('provider_id')
+                            ->label('Provider')
+                            ->options(fn (Get $get) => Provider::query()
+                                ->when($get('service_type_id'), fn ($q, $st) => $q->where('service_type_id', $st))
+                                ->selectRaw("id, COALESCE(name, slug, CONCAT('Provider #', id)) AS label")
+                                ->orderBy('label')
+                                ->pluck('label', 'id')
+                                ->toArray()
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(fn (Set $set) => $set('flow_version_id', null)),
 
-    Forms\Components\Select::make('flow_version_id')
-        ->label('Flow Version (fixed)')
-        ->helperText('Ignored if "Use Latest Published" is ON.')
-        ->options(function (Get $get) {
-            return FlowVersion::query()
-                ->when($get('provider_id'), fn ($q, $pid) => $q->where('provider_id', $pid))
-                ->orderByDesc('published_at')
-                ->orderByDesc('version')
-                ->orderByDesc('id')
-                ->get(['id', 'name', 'version', 'status', 'published_at'])
-                ->mapWithKeys(function ($fv) {
-                    $label = $fv->name ?: "Flow #{$fv->id}";
-                    $meta  = [];
-                    if (!empty($fv->version))      $meta[] = 'v'.$fv->version;
-                    if (!empty($fv->status))       $meta[] = $fv->status;
-                    if (!empty($fv->published_at)) $meta[] = \Illuminate\Support\Carbon::parse($fv->published_at)->toDateString();
-                    if ($meta) $label .= ' ('.implode(', ', $meta).')';
-                    return [$fv->id => (string) $label];
-                })
-                ->all();
-        })
-        ->searchable()
-        ->preload()
-        ->native(false)
-        ->disabled(fn (Get $get) => (bool) $get('use_latest_published'))
-        ->required(fn (Get $get) => ! (bool) $get('use_latest_published')),
-    ]),
+                        Forms\Components\Select::make('flow_version_id')
+                            ->label('Flow Version (fixed)')
+                            ->helperText('Ignored if "Use Latest Published" is ON.')
+                            ->options(function (Get $get) {
+                                return FlowVersion::query()
+                                    ->when($get('provider_id'), fn ($q, $pid) => $q->where('provider_id', $pid))
+                                    ->orderByDesc('published_at')
+                                    ->orderByDesc('version')
+                                    ->orderByDesc('id')
+                                    ->get(['id', 'name', 'version', 'status', 'published_at'])
+                                    ->mapWithKeys(function ($fv) {
+                                        $label = $fv->name ?: "Flow #{$fv->id}";
+                                        $meta = [];
+                                        if (! empty($fv->version)) {
+                                            $meta[] = 'v'.$fv->version;
+                                        }
+                                        if (! empty($fv->status)) {
+                                            $meta[] = $fv->status;
+                                        }
+                                        if (! empty($fv->published_at)) {
+                                            $meta[] = \Illuminate\Support\Carbon::parse($fv->published_at)->toDateString();
+                                        }
+                                        if ($meta) {
+                                            $label .= ' ('.implode(', ', $meta).')';
+                                        }
+
+                                        return [$fv->id => (string) $label];
+                                    })
+                                    ->all();
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->disabled(fn (Get $get) => (bool) $get('use_latest_published'))
+                            ->required(fn (Get $get) => ! (bool) $get('use_latest_published')),
+                    ]),
                 ]),
         ]);
     }

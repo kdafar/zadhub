@@ -3,15 +3,14 @@
 namespace App\Filament\Resources\FlowResource\Pages;
 
 use App\Filament\Resources\FlowResource;
-use App\Models\FlowVersion;
 use Filament\Forms;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
-use Filament\Forms\Components\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -83,6 +82,7 @@ class BuildFlow extends EditRecord
                                         if ($get('type') !== 'api_call') {
                                             return [];
                                         }
+
                                         return [
                                             Forms\Components\TextInput::make('config.url')->label('URL')->required(),
                                             Forms\Components\Select::make('config.method')->options(['GET', 'POST', 'PUT', 'DELETE'])->default('POST'),
@@ -92,7 +92,7 @@ class BuildFlow extends EditRecord
                                             Forms\Components\TextInput::make('config.on_success')->label('Next Screen on Success'),
                                             Forms\Components\TextInput::make('config.on_failure')->label('Next Screen on Failure'),
                                         ];
-                                    })
+                                    }),
                             ])
                             ->collapsible()
                             ->itemLabel(fn (array $state): ?string => $state['type'] ?? ''),
@@ -115,7 +115,7 @@ class BuildFlow extends EditRecord
                     ->addAction(fn (Action $action, Get $get, $state) => $action
                         ->label('Preview')
                         ->icon('heroicon-o-eye')
-                        ->color(fn() => $this->activeScreenIndex == array_search($get('.'), $state) ? 'primary' : 'gray')
+                        ->color(fn () => $this->activeScreenIndex == array_search($get('.'), $state) ? 'primary' : 'gray')
                         ->action(function () use ($get, $state) {
                             $this->activeScreenIndex = array_search($get('.'), $state);
                         })

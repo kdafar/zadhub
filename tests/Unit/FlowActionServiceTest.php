@@ -2,12 +2,9 @@
 
 namespace Tests\Unit;
 
-use App\Models\Provider;
-use App\Models\ProviderCredential;
 use App\Models\WhatsappSession;
 use App\Services\Flows\FlowActionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
