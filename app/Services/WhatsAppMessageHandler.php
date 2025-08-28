@@ -83,14 +83,28 @@ class WhatsAppMessageHandler
         $trigger = $this->triggers->resolve($incomingText, $provider->id);
 
         if ($trigger) {
+            Log::info('Trigger found.', ['trigger_id' => $trigger->id, 'use_latest' => $trigger->use_latest_published]);
+
             $flowVersion = $trigger->use_latest_published
                 ? $provider->flows()->first()?->liveVersion
                 : $trigger->flowVersion;
 
+            Log::info('FlowVersion resolution.', [
+                'found_version_id' => $flowVersion?->id,
+                'flow_id_on_version' => $flowVersion?->flow_id,
+            ]);
+
             if ($flowVersion && $flowVersion->flow) {
+                Log::info('FlowVersion and Flow are valid, starting flow.', ['flow_id' => $flowVersion->flow->id]);
                 $this->startFlow($session, $flowVersion->flow);
 
                 return;
+            } else {
+                Log::error('Could not start flow. FlowVersion or its associated Flow is missing.', [
+                    'trigger_id' => $trigger->id,
+                    'flow_version_id' => $flowVersion?->id,
+                    'has_flow' => ! empty($flowVersion?->flow),
+                ]);
             }
         }
 
