@@ -83,11 +83,10 @@ class ServiceTypeResource extends Resource
                         ->helperText('This flow template will be cloned for new providers of this type.'),
                 ]),
 
-            Forms\Components\KeyValue::make('meta')
-                ->keyLabel('Key')
-                ->valueLabel('Value')
-                ->helperText('Stored as JSON. e.g. supports=address/menu/checkout')
-                ->reorderable(),
+            Forms\Components\Textarea::make('meta')
+                ->json()
+                ->label('Meta')
+                ->helperText('Stored as JSON. e.g. supports=address/menu/checkout'),
 
             Forms\Components\Section::make('Message Templates')
                 ->schema([
