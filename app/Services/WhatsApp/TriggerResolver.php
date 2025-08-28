@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp;
 
 use App\Models\FlowTrigger;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class TriggerResolver
@@ -19,13 +20,24 @@ class TriggerResolver
             return null;
         }
 
+        Log::info('TriggerResolver: Searching for trigger.', [
+            'keyword' => $first,
+            'provider_id' => $providerId,
+        ]);
+
         // match case-insensitively
-        return FlowTrigger::query()
+        $trigger = FlowTrigger::query()
             ->whereRaw('LOWER(keyword) = ?', [mb_strtolower($first)])
             ->when($providerId, fn ($query) => $query->where('provider_id', $providerId))
             ->where('is_active', true)
             ->orderBy('priority')   // lowest number first
             ->orderByDesc('id')
             ->first();
+
+        Log::info('TriggerResolver: Search complete.', [
+            'found_trigger_id' => $trigger?->id,
+        ]);
+
+        return $trigger;
     }
 }
