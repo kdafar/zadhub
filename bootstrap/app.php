@@ -20,5 +20,6 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withCommands([
         PlatformVerify::class,
+        \App\Console\Commands\SendTestMessage::class,
         // add more command classes here
     ])->create();

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Provider;
 use Illuminate\Support\Facades\Log;
+use Netflie\WhatsAppCloudApi\WhatsAppCloudApi;
 
 class WhatsAppApiServiceFactory
 {
@@ -12,7 +13,7 @@ class WhatsAppApiServiceFactory
         $useFake = config('services.whatsapp.fake', app()->environment('local'));
 
         if ($useFake) {
-            return new WhatsAppApiServiceFake;
+            return new WhatsAppApiServiceFake();
         }
 
         $token = $provider?->api_token;
@@ -25,9 +26,14 @@ class WhatsAppApiServiceFactory
                 'has_phone_id' => ! empty($phoneId),
             ]);
 
-            throw new \Exception('WhatsApp API credentials are not configured for provider ID: '.$provider?->id);
+            throw new \Exception('WhatsApp API credentials are not configured for provider ID: ' . $provider?->id);
         }
 
-        return new \App\Services\WhatsAppApiService($token, $phoneId);
+        $client = new WhatsAppCloudApi([
+            'from_phone_number_id' => $phoneId,
+            'access_token' => $token,
+        ]);
+
+        return new WhatsAppApiService($client);
     }
 }

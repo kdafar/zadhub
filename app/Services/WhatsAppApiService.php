@@ -2,124 +2,144 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Netflie\WhatsAppCloudApi\Message\AudioMessage;
+use Netflie\WhatsAppCloudApi\Message\ButtonReply;
+use Netflie\WhatsAppCloudApi\Message\ContactMessage;
+use Netflie\WhatsAppCloudApi\Message\DocumentMessage;
+use Netflie\WhatsAppCloudApi\Message\ImageMessage;
+use Netflie\WhatsAppCloudApi\Message\InteractiveMessage\Action;
+use Netflie\WhatsAppCloudApi\Message\InteractiveMessage\Body;
+use Netflie\WhatsAppCloudApi\Message\InteractiveMessage\Footer;
+use Netflie\WhatsAppCloudApi\Message\InteractiveMessage\Header;
+use Netflie\WhatsAppCloudApi\Message\InteractiveMessage\HeaderType;
+use Netflie\WhatsAppCloudApi\Message\LocationMessage;
+use Netflie\WhatsAppCloudApi\Message\Options;
+use Netflie\WhatsAppCloudApi\Message\StickerMessage;
+use Netflie\WhatsAppCloudApi\Message\Template\Component;
+use Netflie\WhatsAppCloudApi\Message\VideoMessage;
+use Netflie\WhatsAppCloudApi\WhatsAppCloudApi;
 
 class WhatsAppApiService
 {
-    protected string $token;
+    public function __construct(protected WhatsAppCloudApi $client)
+    {}
 
-    protected string $phoneNumberId;
-
-    public function __construct(string $token, string $phoneNumberId)
+    public function sendTextMessage(string $to, string $message, bool $previewUrl = false): void
     {
-        $this->token = $token;
-        $this->phoneNumberId = $phoneNumberId;
+        try {
+            $this->client->sendTextMessage($to, $message, $previewUrl);
+            Log::info('WhatsApp text message sent successfully.', ['to' => $to]);
+        } catch (\Throwable $e) {
+            Log::error('Exception while sending WhatsApp text message.', ['error' => $e->getMessage()]);
+        }
     }
 
-    public function sendTextMessage(string $to, string $message): void
+    public function sendImage(string $to, string $linkOrId, string $caption = ''): void
     {
-        $this->sendMessage($to, [
-            'type' => 'text',
-            'text' => ['body' => $message],
-        ]);
+        $this->sendMedia(new ImageMessage($linkOrId, $caption), $to);
+    }
+
+    public function sendDocument(string $to, string $linkOrId, string $filename, string $caption = ''): void
+    {
+        $this->sendMedia(new DocumentMessage($linkOrId, $filename, $caption), $to);
+    }
+
+    public function sendAudio(string $to, string $linkOrId): void
+    {
+        $this->sendMedia(new AudioMessage($linkOrId), $to);
+    }
+
+    public function sendVideo(string $to, string $linkOrId, string $caption = ''): void
+    {
+        $this->sendMedia(new VideoMessage($linkOrId, $caption), $to);
+    }
+
+    public function sendSticker(string $to, string $linkOrId): void
+    {
+        $this->sendMedia(new StickerMessage($linkOrId), $to);
+    }
+
+    private function sendMedia(object $mediaMessage, string $to): void
+    {
+        try {
+            $this->client->sendMedia($to, $mediaMessage);
+            Log::info('WhatsApp media message sent successfully.', ['to' => $to, 'type' => get_class($mediaMessage)]);
+        } catch (\Throwable $e) {
+            Log::error('Exception while sending WhatsApp media message.', ['error' => $e->getMessage()]);
+        }
+    }
+
+    public function sendLocation(string $to, float $latitude, float $longitude, string $name = '', string $address = ''): void
+    {
+        try {
+            $this->client->sendLocation($to, new LocationMessage($latitude, $longitude, $name, $address));
+            Log::info('WhatsApp location message sent successfully.', ['to' => $to]);
+        } catch (\Throwable $e) {
+            Log::error('Exception while sending WhatsApp location message.', ['error' => $e->getMessage()]);
+        }
+    }
+
+    public function sendTemplate(string $to, string $templateName, string $language, ?Component $components = null): void
+    {
+        try {
+            $this->client->sendTemplate($to, $templateName, $language, $components);
+            Log::info('WhatsApp template message sent successfully.', ['to' => $to, 'template' => $templateName]);
+        } catch (\Throwable $e) {
+            Log::error('Exception while sending WhatsApp template message.', ['error' => $e->getMessage()]);
+        }
     }
 
     public function sendButtonMessage(string $to, string $question, array $buttons): void
     {
-        // WhatsApp interactive buttons have a specific format
-        $action = [
-            'buttons' => array_map(function ($button, $index) {
-                return [
-                    'type' => 'reply',
-                    'reply' => [
-                        'id' => "btn_{$index}", // Simple ID for now
-                        'title' => $button['label'],
-                    ],
-                ];
-            }, $buttons, array_keys($buttons)),
-        ];
+        try {
+            $replyButtons = array_map(fn ($button) => new ButtonReply($button['id'], $button['label']), $buttons);
+            $action = new Action($replyButtons);
+            $body = new Body($question);
+            $interactiveMessage = new \Netflie\WhatsAppCloudApi\Message\InteractiveMessage\InteractiveMessage($action, $body);
 
-        $this->sendMessage($to, [
-            'type' => 'interactive',
-            'interactive' => [
-                'type' => 'button',
-                'body' => ['text' => $question],
-                'action' => $action,
-            ],
-        ]);
+            $this->client->sendInteractiveMessage($to, $interactiveMessage);
+            Log::info('WhatsApp button message sent successfully.', ['to' => $to]);
+        } catch (\Throwable $e) {
+            Log::error('Exception while sending WhatsApp button message.', ['error' => $e->getMessage()]);
+        }
     }
 
     public function markMessageAsRead(string $messageId): void
     {
-        $this->sendMessage(null, [
-            'status' => 'read',
-            'message_id' => $messageId,
-        ]);
-    }
-
-    private function sendMessage(?string $to, array $payload): void
-    {
         try {
-            $url = "https://graph.facebook.com/v19.0/{$this->phoneNumberId}/messages";
-
-            $basePayload = ['messaging_product' => 'whatsapp'];
-            if ($to) {
-                $basePayload['to'] = $to;
-            }
-
-            $response = Http::withToken($this->token)->post($url, $basePayload + $payload);
-
-            // Log the full response from Meta for debugging
-            Log::info('WhatsApp API Response:', [
-                'status' => $response->status(),
-                'json' => $response->json(),
-            ]);
-
-            if ($response->failed()) {
-                Log::error('WhatsApp API request failed.', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-            } elseif ($response->json('error')) {
-                Log::error('WhatsApp API returned an error.', [
-                    'status' => $response->status(),
-                    'error' => $response->json('error'),
-                ]);
-            } else {
-                Log::info('WhatsApp message sent successfully.', ['to' => $to]);
-            }
+            $this->client->markAsRead($messageId);
         } catch (\Throwable $e) {
-            Log::error('Exception while sending WhatsApp message.', [
-                'error' => $e->getMessage(),
-            ]);
+            Log::error('Exception while marking message as read.', ['error' => $e->getMessage()]);
         }
     }
 
     public function sendFlowMessage(string $to, string $flowId, string $flowToken, array $screenData): void
     {
-        $this->sendMessage($to, [
-            'type' => 'interactive',
-            'interactive' => [
-                'type' => 'flow',
-                'header' => ['type' => 'text', 'text' => $screenData['title'] ?? ' '],
-                'body' => ['text' => $screenData['body'] ?? ' '],
-                'footer' => ['text' => $screenData['footer'] ?? ' '],
-                'action' => [
-                    'name' => 'flow',
-                    'parameters' => [
-                        'flow_message_version' => '3',
-                        'flow_id' => $flowId,
-                        'flow_token' => $flowToken,
-                        'flow_cta' => $screenData['footer'] ?? 'Next',
-                        'flow_action' => 'navigate',
-                        'flow_action_payload' => [
-                            'screen' => $screenData['id'],
-                            'data' => $screenData['data_bindings'] ?? [],
-                        ],
-                    ],
-                ],
-            ],
-        ]);
+        try {
+            $header = new Header(HeaderType::TEXT, $screenData['title'] ?? ' ');
+            $body = new Body($screenData['body'] ?? ' ');
+            $footer = new Footer($screenData['footer'] ?? ' ');
+
+            $action = new \Netflie\WhatsAppCloudApi\Message\Flow\Action(
+                $screenData['footer'] ?? 'Next',
+                new \Netflie\WhatsAppCloudApi\Message\Flow\Parameters(
+                    $flowId,
+                    $flowToken,
+                    [
+                        'screen' => $screenData['id'],
+                        'data' => $screenData['data_bindings'] ?? [],
+                    ]
+                )
+            );
+
+            $interactive = new \Netflie\WhatsAppCloudApi\Message\Flow\FlowMessage($header, $body, $footer, $action);
+            $options = (new Options())->setPreviewUrl(false);
+
+            $this->client->sendInteractiveMessage($to, $interactive, $options);
+            Log::info('WhatsApp flow message sent successfully.', ['to' => $to]);
+        } catch (\Throwable $e) {
+            Log::error('Exception while sending WhatsApp flow message.', ['error' => $e->getMessage()]);
+        }
     }
 }
