@@ -74,6 +74,15 @@ class ServiceTypeResource extends Resource
                 ->default(true)
                 ->inline(false),
 
+            Forms\Components\Section::make('Default Flow')
+                ->schema([
+                    Forms\Components\Select::make('default_flow_template_id')
+                        ->label('Default Flow Template')
+                        ->relationship('defaultFlowTemplate', 'name')
+                        ->searchable()
+                        ->helperText('This flow template will be cloned for new providers of this type.'),
+                ]),
+
             Forms\Components\KeyValue::make('meta')
                 ->keyLabel('Key')
                 ->valueLabel('Value')
