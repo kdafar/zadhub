@@ -25,19 +25,13 @@ class TriggerResolver
             'provider_id' => $providerId,
         ]);
 
-        // match case-insensitively
-        $trigger = FlowTrigger::query()
+        // The `when` clause is no longer needed, as the UsesTenantConnection trait on the
+        // FlowTrigger model will automatically scope this query to the current provider.
+        return FlowTrigger::query()
             ->whereRaw('LOWER(keyword) = ?', [mb_strtolower($first)])
-            ->when($providerId, fn ($query) => $query->where('provider_id', $providerId))
             ->where('is_active', true)
             ->orderBy('priority')   // lowest number first
             ->orderByDesc('id')
             ->first();
-
-        Log::info('TriggerResolver: Search complete.', [
-            'found_trigger_id' => $trigger?->id,
-        ]);
-
-        return $trigger;
     }
 }

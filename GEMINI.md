@@ -1,3 +1,4 @@
+--- Context from: GEMINI.md ---
 # Project Overview: Multi-Tenant WhatsApp Platform
 
 ## Core Purpose
@@ -33,16 +34,30 @@ This is a Laravel-based backend for a multi-tenant WhatsApp messaging service. I
 ---
 
 ## Current Project Status
-- **Core Engine:** The foundational logic for multi-step, branching conversational flows is complete and tested. The system can successfully start a flow, process user replies, and navigate between screens based on choices.
+- **Core Engine:** The foundational logic for multi-step, branching conversational flows is complete. The system can successfully start a flow, process user replies, and navigate between screens.
+- **WhatsApp API Integration:** The project now uses the `netflie/whatsapp-cloud-api` package for all outgoing WhatsApp communications. The `WhatsAppApiService` acts as a wrapper around this library, providing methods for sending various message types (text, images, documents, flows, etc.).
 - **Database Schema:** The database schema is implemented, with all major models (`ServiceType`, `Provider`, `Flow`, `FlowVersion`, etc.) in place.
 - **Admin Panel:** Basic Filament resources for managing core models have been created.
 - **Onboarding & Routing:** The `ProviderOnboardingService` and the `TriggerResolver` for keyword-based routing are functional.
-- **Security:** Webhook signature validation is implemented.
+- **Security:** Webhook signature validation is implemented, using helpers from the new WhatsApp library where applicable.
 
 ---
 
 ## High-Level Goals (Next Steps)
-1.  **Enhance the Flow Builder UI:** Create a user-friendly interface in the Filament admin panel for non-developers to visually build and manage conversational flows. This is the highest priority.
-2.  **Implement Data Interpolation:** Update the `FlowRenderer` to substitute variables from the session `context` into message text (e.g., `Welcome, {{name}}!`).
-3.  **Develop an External API Adapter Strategy:** Define a pattern for making external API calls from within a flow (e.g., a new `ApiAction` component) to fetch or send data to provider systems.
-4.  **Centralize System Messages:** Refactor the `WhatsAppMessageHandler` to pull all user-facing strings (error messages, prompts) from the `message_templates` field on the `ServiceType` model.
+1.  **Enhance the Flow Builder UI (Highest Priority):** The backend can now send many message types (images, documents, videos, etc.). The next critical step is to add corresponding components to the Flow Builder UI in Filament. This will allow admins to visually construct richer, more engaging flows.
+2.  **Implement Message Template Sending:** The `WhatsAppApiService` can send pre-approved templates, but there is no UI or flow action to trigger this. A new 'Send Template' action should be added to the Flow Builder.
+3.  **Implement Data Interpolation:** Update the `FlowRenderer` to substitute variables from the session `context` into message text (e.g., `Welcome, {{name}}!`). This is essential for personalization.
+4.  **Develop an External API Adapter Strategy:** Refine the `FlowActionService` to create a more robust and pluggable pattern for making external API calls from within a flow (e.g., to fetch data from a provider's system).
+5.  **Improve Fallback Handler:** The `WhatsAppMessageHandler` currently sends a generic fallback message. This should be improved to list the available keywords for the specific provider to better guide the user.
+
+---
+
+## Suggested Libraries & Tools
+For future consideration, these packages could be highly beneficial for the project:
+
+- **`spatie/laravel-medialibrary`**: As the platform grows, you'll need to handle media sent *by users* (e.g., images for support tickets). This library is the industry standard in the Laravel ecosystem for managing file uploads and associating them with models.
+- **`spatie/laravel-activitylog`**: For a multi-tenant platform, having a clear audit trail is crucial. This package makes it incredibly easy to log all significant actions performed by users and admins.
+- **`tenancy/multi-tenant`**: The project currently handles multi-tenancy manually by scoping queries with `provider_id`. For true data separation and scalability, a dedicated tenancy package like this one is the gold standard. It can automatically handle database connections, routing, and data scoping for each tenant.
+- **`laravel/horizon`**: The project uses database queues. As traffic increases, you will need a more robust queue monitoring and management solution. Horizon provides a beautiful dashboard and code-driven configuration for your Redis queues.
+
+--- End of Context from: GEMINI.md ---

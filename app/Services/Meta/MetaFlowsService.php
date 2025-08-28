@@ -16,19 +16,21 @@ class MetaFlowsService
         $this->base = "https://graph.facebook.com/{$v}";
     }
 
-    protected function token(): string
-    {
-        return env('META_ACCESS_TOKEN');
-    }
-
-    protected function waba(): string
-    {
-        return env('META_WABA_ID');
-    }
-
     /** Create a draft Flow on Meta and store mapping */
     public function create(FlowVersion $fv): MetaFlow
     {
+        $provider = $fv->provider;
+        if (! $provider) {
+            throw new \Exception('FlowVersion must be associated with a Provider to publish to Meta.');
+        }
+
+        $token = $provider->api_token;
+        $wabaId = data_get($provider->meta, 'waba_id');
+
+        if (! $token || ! $wabaId) {
+            throw new \Exception("Provider is missing Meta credentials (WABA ID or API Token).");
+        }
+
         // Convert your internal JSON to Meta Flow JSON (keep 1:1 if already compatible)
         $def = $fv->definition;
         if (! is_array($def)) {
@@ -36,11 +38,8 @@ class MetaFlowsService
         }
         $flowJson = $this->mapToMetaJson($def);
 
-        $res = Http::withToken($this->token())
-            ->post("{$this->base}/{$this->waba()}/flows", [
-                // The exact keys must follow Meta docs; common fields:
-                // name: human label in WhatsApp Manager
-                // flow_json: JSON string of your flow schema
+        $res = Http::withToken($token)
+            ->post("{$this->base}/{$wabaId}/flows", [
                 'name' => $fv->name ?: "Flow #{$fv->id}",
                 'flow_json' => json_encode($flowJson, JSON_UNESCAPED_UNICODE),
             ]);
@@ -57,7 +56,17 @@ class MetaFlowsService
     /** Publish a Flow (locks it for sending) */
     public function publish(MetaFlow $mf): MetaFlow
     {
-        $res = Http::withToken($this->token())
+        $provider = $mf->flowVersion->provider;
+        if (! $provider) {
+            throw new \Exception('MetaFlow must be associated with a Provider to publish.');
+        }
+
+        $token = $provider->api_token;
+        if (! $token) {
+            throw new \Exception('Provider is missing an API Token.');
+        }
+
+        $res = Http::withToken($token)
             ->post("{$this->base}/{$mf->meta_flow_id}/publish", []);
         $res->throw();
 
@@ -70,10 +79,10 @@ class MetaFlowsService
     }
 
     /** OPTIONAL: set business encryption public key (for endpoint flows) */
-    public function setBusinessEncryptionKey(string $publicPem): void
+    public function setBusinessEncryptionKey(string $publicPem, string $wabaId, string $token): void
     {
-        Http::withToken($this->token())
-            ->post("{$this->base}/{$this->waba()}/whatsapp_business_encryption", [
+        Http::withToken($token)
+            ->post("{$this->base}/{$wabaId}/whatsapp_business_encryption", [
                 'business_encryption_public_key' => $publicPem,
             ])->throw();
     }

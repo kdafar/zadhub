@@ -29,9 +29,12 @@ class BuildFlow extends EditRecord
         // Register all available component classes here
         $componentClasses = [
             \App\FlowComponents\TextBody::class,
+            \App\FlowComponents\Image::class,
+            \App\FlowComponents\Video::class,
+            \App\FlowComponents\Audio::class,
+            \App\FlowComponents\Document::class,
             \App\FlowComponents\Dropdown::class,
             \App\FlowComponents\TextInput::class,
-            \App\FlowComponents\Image::class,
             \App\FlowComponents\DatePicker::class,
         ];
         $componentOptions = collect($componentClasses)

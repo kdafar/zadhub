@@ -18,6 +18,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 
 class ProviderResource extends Resource
 {
@@ -50,6 +52,14 @@ class ProviderResource extends Resource
                     Forms\Components\TextInput::make('slug')
                         ->required()
                         ->maxLength(255),
+                ]),
+
+            Forms\Components\Section::make('Provider Logo')
+                ->schema([
+                    SpatieMediaLibraryFileUpload::make('logo')
+                        ->collection('logos')
+                        ->image()
+                        ->imageEditor(),
                 ]),
 
             Forms\Components\Section::make('Status & Auth')
@@ -88,6 +98,8 @@ class ProviderResource extends Resource
                 ->schema([
                     Forms\Components\TextInput::make('whatsapp_phone_number_id')
                         ->label('WhatsApp Phone Number ID'),
+                    Forms\Components\TextInput::make('meta.waba_id')
+                        ->label('WhatsApp Business Account ID (WABA ID)'),
                     Forms\Components\TextInput::make('api_token')
                         ->label('API Token')
                         ->password()
@@ -115,6 +127,9 @@ class ProviderResource extends Resource
     {
         return $table
             ->columns([
+                SpatieMediaLibraryImageColumn::make('logo')
+                    ->collection('logos')
+                    ->circular(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
