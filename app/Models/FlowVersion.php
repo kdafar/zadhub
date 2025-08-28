@@ -88,4 +88,20 @@ class FlowVersion extends Model
     {
         return $this->definition ?? $this->schema_json ?? [];
     }
+
+    public function publish(): bool
+    {
+        return $this->update([
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+    }
+
+    public function unpublish(): bool
+    {
+        return $this->update([
+            'status' => 'draft',
+            'published_at' => null,
+        ]);
+    }
 }

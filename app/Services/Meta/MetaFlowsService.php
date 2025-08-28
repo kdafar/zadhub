@@ -30,7 +30,11 @@ class MetaFlowsService
     public function create(FlowVersion $fv): MetaFlow
     {
         // Convert your internal JSON to Meta Flow JSON (keep 1:1 if already compatible)
-        $flowJson = $this->mapToMetaJson($fv->definition ?? []);
+        $def = $fv->definition;
+        if (! is_array($def)) {
+            $def = json_decode((string) $def, true) ?? [];
+        }
+        $flowJson = $this->mapToMetaJson($def);
 
         $res = Http::withToken($this->token())
             ->post("{$this->base}/{$this->waba()}/flows", [
