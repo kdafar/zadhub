@@ -91,11 +91,11 @@ class ServiceTypeResource extends Resource
 
             Forms\Components\Section::make('Message Templates')
                 ->schema([
-                    Forms\Components\KeyValue::make('message_templates')
-                        ->keyLabel('Template Key')
-                        ->valueLabel('Template Content')
-                        ->helperText('JSON templates for system messages (e.g., welcome, update).')
-                        ->reorderable(),
+                    Forms\Components\Textarea::make('message_templates')
+                        ->label('Message Templates')
+                        ->json()
+                        ->rows(10)
+                        ->helperText('JSON templates for system messages (e.g., welcome, update).'),
                 ]),
         ]);
     }
