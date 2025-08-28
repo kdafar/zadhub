@@ -23,8 +23,9 @@ class PlatformVerify extends Command
      * @var string
      */
     protected $signature = 'platform:verify 
-        {--seed : Seed minimal data and run the onboarding service} 
-        {--handler : Run a WhatsApp handler dry-run with a test payload}';
+        {--seed : Seed minimal data and run the onboarding service}
+        {--handler : Run a WhatsApp handler dry-run with a test payload}
+        {--onboard= : Onboard a specific provider by slug}';
 
     /**
      * The console command description.
@@ -45,7 +46,6 @@ class PlatformVerify extends Command
         $this->info('== Platform Verification Suite ==');
         Log::info('== Platform Verification Starting ==');
 
-        // Run tests only if the corresponding options are provided
         if ($this->option('seed')) {
             $this->runSeederAndOnboarding($dir);
         }
@@ -54,12 +54,42 @@ class PlatformVerify extends Command
             $this->runHandlerTest($dir);
         }
 
+        if ($slug = $this->option('onboard')) {
+            $this->onboardProvider($slug);
+        }
+
         $this->newLine();
         $this->info('== Verification Complete ==');
-        $this->line('Results have been written to the files in: storage/app/verify/');
+        $this->line('Check logs for details and results in: storage/app/verify/');
         $this->newLine();
 
         return self::SUCCESS;
+    }
+
+    private function onboardProvider(string $slug): void
+    {
+        $this->line("Running: Onboarding for provider '{$slug}'...");
+        $provider = Provider::where('slug', $slug)->first();
+
+        if (! $provider) {
+            $this->error("Provider with slug '{$slug}' not found.");
+
+            return;
+        }
+
+        try {
+            $svc = app(\App\Services\ProviderOnboardingService::class);
+            $flow = $svc->onboard($provider);
+
+            if ($flow) {
+                $this->info("Successfully onboarded provider '{$slug}'. Flow ID: {$flow->id}");
+            } else {
+                $this->warn("Onboarding service ran for '{$slug}' but returned no flow. Check logs for details.");
+            }
+        } catch (\Throwable $e) {
+            $this->error("An error occurred during onboarding for '{$slug}': " . $e->getMessage());
+            Log::error('Onboarding command failed', ['slug' => $slug, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        }
     }
 
     /**
