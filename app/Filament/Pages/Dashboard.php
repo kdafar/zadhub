@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\FlowCompletionChart;
+use App\Filament\Widgets\SessionsPerDayChart;
 use App\Filament\Widgets\StatsOverview;
 
 class Dashboard extends \Filament\Pages\Dashboard
@@ -14,6 +16,8 @@ class Dashboard extends \Filament\Pages\Dashboard
     {
         return [
             StatsOverview::class,
+            SessionsPerDayChart::class,
+            FlowCompletionChart::class,
         ];
     }
 }

@@ -87,10 +87,33 @@ class ServiceTypeResource extends Resource
                         ->required(),
                 ]),
 
-            Forms\Components\Textarea::make('meta')
-                ->json()
-                ->label('Meta')
-                ->helperText('Stored as JSON. e.g. supports=address/menu/checkout'),
+            Forms\Components\Section::make('Custom Attributes')
+                ->description('Define custom data fields that can be used in flows for this service type.')
+                ->schema([
+                    Forms\Components\Repeater::make('meta.custom_attributes')
+                        ->label('Attributes')
+                        ->schema([
+                            Forms\Components\TextInput::make('name')
+                                ->label('Attribute Name')
+                                ->helperText('e.g., patient_id, order_preference')
+                                ->required(),
+                            Forms\Components\Select::make('type')
+                                ->options([
+                                    'text' => 'Text',
+                                    'number' => 'Number',
+                                    'boolean' => 'Yes/No',
+                                ])
+                                ->default('text')
+                                ->required(),
+                            Forms\Components\TextInput::make('label')
+                                ->label('Label')
+                                ->helperText('User-friendly name for this attribute.')
+                                ->required(),
+                            Forms\Components\Toggle::make('required'),
+                        ])
+                        ->columns(2)
+                        ->defaultItems(0),
+                ]),
 
             Forms\Components\Section::make('Message Templates')
                 ->schema([

@@ -11,6 +11,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FlowTemplateResource extends Resource
 {
@@ -96,6 +97,22 @@ class FlowTemplateResource extends Resource
                     ->url(fn (FlowTemplate $record) => self::getUrl('build', ['record' => $record])),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('export')
+                    ->label('Export JSON')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->action(function (FlowTemplate $record) {
+                        $version = $record->latestVersion;
+                        if (!$version) {
+                            return;
+                        }
+                        $json = json_encode($version->definition, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                        $filename = $record->slug . '-v' . $version->version . '.json';
+
+                        return response()->streamDownload(
+                            fn () => print($json),
+                            $filename
+                        );
+                    }),
             ]))
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
