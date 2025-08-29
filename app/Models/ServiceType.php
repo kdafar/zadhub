@@ -24,12 +24,14 @@ class ServiceType extends Model
         'is_active',
         'default_flow_template_id',
         'message_templates',
+        'categories',
     ];
 
     protected $casts = [
         'meta' => 'array',
         'is_active' => 'boolean',
         'message_templates' => 'array',
+        'categories' => 'array',
     ];
 
     protected static function booted(): void
