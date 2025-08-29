@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\FlowTemplateResource\Pages;
 
 use App\Filament\Resources\FlowTemplateResource;
+use App\Models\FlowVersion;
 use Filament\Forms;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -19,14 +21,21 @@ class BuildTemplate extends EditRecord
 
     protected static ?string $title = 'Flow Template Builder';
 
+    protected static string $view = 'filament.resources.flow-template-resource.pages.build-template';
+
+    public int $activeScreenIndex = 0;
+
     public function form(Form $form): Form
     {
         // Register all available component classes here
         $componentClasses = [
             \App\FlowComponents\TextBody::class,
+            \App\FlowComponents\Image::class,
+            \App\FlowComponents\Video::class,
+            \App\FlowComponents\Audio::class,
+            \App\FlowComponents\Document::class,
             \App\FlowComponents\Dropdown::class,
             \App\FlowComponents\TextInput::class,
-            \App\FlowComponents\Image::class,
             \App\FlowComponents\DatePicker::class,
         ];
         $componentOptions = collect($componentClasses)
@@ -61,6 +70,37 @@ class BuildTemplate extends EditRecord
                             ])
                             ->collapsible()
                             ->itemLabel(fn (array $state): ?string => $componentOptions[$state['type']] ?? ''),
+
+                        Repeater::make('actions')
+                            ->label('Actions (on screen entry)')
+                            ->schema([
+                                Select::make('type')
+                                    ->label('Action Type')
+                                    ->options([
+                                        'api_call' => 'API Call',
+                                    ])
+                                    ->live()
+                                    ->required(),
+                                Forms\Components\Group::make()
+                                    ->schema(function (Get $get) {
+                                        if ($get('type') !== 'api_call') {
+                                            return [];
+                                        }
+
+                                        return [
+                                            Forms\Components\TextInput::make('config.url')->label('URL')->required(),
+                                            Forms\Components\Select::make('config.method')->options(['GET', 'POST', 'PUT', 'DELETE'])->default('POST'),
+                                            Forms\Components\KeyValue::make('config.headers')->label('Headers'),
+                                            Forms\Components\KeyValue::make('config.body')->label('Body/Payload'),
+                                            Forms\Components\TextInput::make('config.save_to')->label('Save Response To')->default('api_response'),
+                                            Forms\Components\TextInput::make('config.on_success')->label('Next Screen on Success'),
+                                            Forms\Components\TextInput::make('config.on_failure')->label('Next Screen on Failure'),
+                                        ];
+                                    }),
+                            ])
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): ?string => $state['type'] ?? ''),
+
                         TextInput::make('footer_label')->label('Footer Button Label')->required(),
                         Select::make('next_screen_id')
                             ->label('Next Screen (on Footer click)')
@@ -75,7 +115,15 @@ class BuildTemplate extends EditRecord
                     ])
                     ->reorderableWithDragAndDrop()
                     ->collapsible()
-                    ->itemLabel(fn (array $state): ?string => $state['title'] ?? null),
+                    ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
+                    ->addAction(fn (Action $action, Get $get, $state) => $action
+                        ->label('Preview')
+                        ->icon('heroicon-o-eye')
+                        ->color(fn () => $this->activeScreenIndex == array_search($get('.'), $state) ? 'primary' : 'gray')
+                        ->action(function () use ($get, $state) {
+                            $this->activeScreenIndex = array_search($get('.'), $state);
+                        })
+                    ),
             ])
             ->model($this->record)
             ->statePath('data');
@@ -84,21 +132,55 @@ class BuildTemplate extends EditRecord
     public function mount(int|string $record): void
     {
         parent::mount($record);
-        $latestVersion = $this->record->versions()->first();
-        $this->form->fill($latestVersion?->builder_data ?? []);
+
+        $version = $this->record->versions()->latest('version')->first();
+
+        if (!$version) {
+            $version = $this->record->versions()->create([
+                'version' => 1,
+                'definition' => [
+                    'start_screen' => 'WELCOME',
+                    'screens' => [
+                        [
+                            'id' => 'WELCOME',
+                            'title' => 'Welcome',
+                            'children' => [
+                                [
+                                    'type' => 'text_body',
+                                    'data' => ['text' => 'This is a new flow template.'],
+                                ],
+                            ],
+                            'footer_label' => 'Next',
+                        ],
+                    ],
+                ],
+                'is_template' => true,
+                'service_type_id' => $this->record->service_type_id,
+            ]);
+            $this->record->update(['latest_version_id' => $version->id]);
+        }
+
+        $this->form->fill($version->definition ?? []);
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        $latestVersion = $record->versions()->first();
-        $newVersionNumber = ($latestVersion?->version_number ?? 0) + 1;
-        $version = $record->versions()->create([
-            'version_number' => $newVersionNumber,
-            'builder_data' => $data,
-            'changelog' => "Version {$newVersionNumber} created.",
-        ]);
-        $record->update(['live_version_id' => $version->id]);
-        Notification::make()->title('Template saved successfully')->success()->send();
+        $latestVersion = $record->versions()->latest('version')->first();
+
+        if ($latestVersion) {
+            $latestVersion->update(['definition' => $data]);
+        } else {
+            // This case should ideally not be hit due to the logic in mount(), but as a fallback:
+            $latestVersion = $record->versions()->create([
+                'definition' => $data,
+                'version' => 1,
+                'is_template' => true,
+                'service_type_id' => $record->service_type_id,
+            ]);
+            $record->update(['latest_version_id' => $latestVersion->id]);
+        }
+
+        Notification::make()->title('Flow template saved successfully')->success()->send();
 
         return $record;
     }

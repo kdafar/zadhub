@@ -39,6 +39,27 @@
                                     @endif
                                     @break
 
+                                @case('video')
+                                    <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                                        <p class="text-blue-400 text-sm truncate">{{ $cData['src'] ?? '' }}</p>
+                                        <p class="text-gray-300 text-xs mt-1">{{ $cData['caption'] ?? 'Video' }}</p>
+                                    </div>
+                                    @break
+
+                                @case('audio')
+                                    <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                                        <p class="text-blue-400 text-sm truncate">{{ $cData['src'] ?? '' }}</p>
+                                        <p class="text-gray-300 text-xs mt-1">Audio File</p>
+                                    </div>
+                                    @break
+
+                                @case('document')
+                                    <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                                        <p class="text-blue-400 text-sm truncate">{{ $cData['src'] ?? '' }}</p>
+                                        <p class="text-gray-300 text-xs mt-1">{{ $cData['filename'] ?? 'Document' }}</p>
+                                    </div>
+                                    @break
+
                                 @case('dropdown')
                                     <div class="bg-gray-700/50 rounded-lg p-3">
                                         <p class="text-white font-medium text-sm mb-2">{{ $cData['label'] ?? '' }}</p>

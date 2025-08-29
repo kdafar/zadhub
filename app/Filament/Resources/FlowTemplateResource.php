@@ -90,9 +90,13 @@ class FlowTemplateResource extends Resource
             ])
             ->filters([])
             ->actions([
+                Tables\Actions\Action::make('build')
+                    ->label('Build')
+                    ->icon('heroicon-o-wrench-screwdriver')
+                    ->url(fn (FlowTemplate $record) => self::getUrl('build', ['record' => $record])),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
-            ])
+            ]))
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
                 Tables\Actions\RestoreBulkAction::make(),
@@ -114,6 +118,7 @@ class FlowTemplateResource extends Resource
             'create' => Pages\CreateFlowTemplate::route('/create'),
             'view' => Pages\ViewFlowTemplate::route('/{record}'),
             'edit' => Pages\EditFlowTemplate::route('/{record}/edit'),
+            'build' => Pages\BuildTemplate::route('/{record}/build'),
         ];
     }
 }
