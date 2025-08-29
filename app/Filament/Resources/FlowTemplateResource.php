@@ -113,7 +113,7 @@ class FlowTemplateResource extends Resource
                             $filename
                         );
                     }),
-            ]))
+            ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
                 Tables\Actions\RestoreBulkAction::make(),

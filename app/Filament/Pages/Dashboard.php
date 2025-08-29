@@ -20,4 +20,19 @@ class Dashboard extends \Filament\Pages\Dashboard
             FlowCompletionChart::class,
         ];
     }
+
+     public function hasLogo(): bool
+    {
+        return false; // Set to false to hide the logo and fix the error
+    }
+
+    public function getLogo(): ?string
+    {
+        return null;
+    }
+
+    public function getLogoHeight(): ?string
+    {
+        return null;
+    }
 }
