@@ -20,9 +20,11 @@ class ProviderFlowPinResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';
 
-    protected static ?string $navigationGroup = 'Routing';
+    protected static ?string $navigationGroup = 'Flows';
 
-    protected static ?int $navigationSort = 21;
+    protected static ?string $navigationLabel = 'Flow Pins';
+
+    protected static ?int $navigationSort = 60;
 
     protected static ?string $slug = 'provider-flow-pins';
 

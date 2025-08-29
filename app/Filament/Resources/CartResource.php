@@ -19,7 +19,7 @@ class CartResource extends Resource
 
     protected static ?string $navigationGroup = 'Commerce';
 
-    protected static ?int $navigationSort = 30;
+    protected static ?int $navigationSort = 10;
 
     protected static ?string $slug = 'carts';
 

@@ -19,7 +19,7 @@ class PaymentLinkResource extends Resource
 
     protected static ?string $navigationGroup = 'Commerce';
 
-    protected static ?int $navigationSort = 32;
+    protected static ?int $navigationSort = 30;
 
     protected static ?string $slug = 'payment-links';
 

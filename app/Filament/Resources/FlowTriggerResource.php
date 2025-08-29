@@ -20,11 +20,13 @@ class FlowTriggerResource extends Resource
 {
     protected static ?string $model = FlowTrigger::class;
 
-    protected static ?string $navigationGroup = 'WhatsApp';
+    protected static ?string $navigationGroup = 'Flows';
 
     protected static ?string $navigationIcon = 'heroicon-o-bolt';
 
-    protected static ?string $navigationLabel = 'Flow Triggers';
+    protected static ?string $navigationLabel = 'Triggers';
+
+    protected static ?int $navigationSort = 40;
 
     public static function form(Forms\Form $form): Forms\Form
     {

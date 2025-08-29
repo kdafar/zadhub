@@ -20,9 +20,11 @@ class ProviderRoutingRuleResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
 
-    protected static ?string $navigationGroup = 'Routing';
+    protected static ?string $navigationGroup = 'Flows';
 
-    protected static ?int $navigationSort = 20;
+    protected static ?string $navigationLabel = 'Routing Rules';
+
+    protected static ?int $navigationSort = 50;
 
     protected static ?string $slug = 'provider-routing-rules';
 

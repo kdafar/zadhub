@@ -18,9 +18,11 @@ class ProviderFlowOverridesResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-adjustments-horizontal';
 
-    protected static ?string $navigationGroup = 'Routing';
+    protected static ?string $navigationGroup = 'Flows';
 
-    protected static ?int $navigationSort = 21;
+    protected static ?string $navigationLabel = 'Flow Overrides';
+
+    protected static ?int $navigationSort = 70;
 
     protected static ?string $slug = 'provider-flow-overrides';
 

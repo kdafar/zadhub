@@ -16,7 +16,9 @@ class FlowVersionResource extends Resource
 {
     protected static ?string $model = FlowVersion::class;
 
-    protected static ?string $navigationGroup = 'WhatsApp';
+    protected static ?string $navigationGroup = 'Flows';
+
+    protected static ?int $navigationSort = 30;
 
     protected static ?string $navigationLabel = 'Flow Versions';
 

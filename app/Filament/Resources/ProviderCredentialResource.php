@@ -16,7 +16,7 @@ class ProviderCredentialResource extends Resource
 {
     protected static ?string $model = ProviderCredential::class;
 
-    protected static ?string $navigationGroup = 'Providers';
+    protected static ?string $navigationGroup = 'Directory';
 
     protected static ?string $navigationIcon = 'heroicon-o-key';
 

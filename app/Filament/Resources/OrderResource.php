@@ -21,7 +21,7 @@ class OrderResource extends Resource
 
     protected static ?string $navigationGroup = 'Commerce';
 
-    protected static ?int $navigationSort = 31;
+    protected static ?int $navigationSort = 20;
 
     protected static ?string $slug = 'orders';
 
