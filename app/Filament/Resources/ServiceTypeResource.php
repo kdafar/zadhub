@@ -118,96 +118,36 @@ class ServiceTypeResource extends Resource
                 ]),
 
             Forms\Components\Section::make('Meta Message Templates')
-                ->description('Define templates for Meta approval. Use {{1}}, {{2}} for variables in the body.')
+                ->description('Read-only view of templates imported from Meta.')
                 ->schema([
                     Forms\Components\Repeater::make('message_templates')
-                        ->label('Templates')
+                        ->label('Imported Templates')
                         ->schema([
                             Forms\Components\Grid::make(3)->schema([
-                                Forms\Components\TextInput::make('name')
-                                    ->label('Template Name')
-                                    ->helperText('Lowercase and underscores only, e.g., order_confirmation.')
-                                    ->required(),
-                                Forms\Components\TextInput::make('language')
-                                    ->label('Language Code')
-                                    ->helperText('e.g., en_US, ar')
-                                    ->required(),
-                                Forms\Components\Select::make('category')
-                                    ->options([
-                                        'TRANSACTIONAL' => 'Transactional',
-                                        'MARKETING' => 'Marketing',
-                                        'AUTHENTICATION' => 'Authentication',
-                                    ])
-                                    ->required(),
+                                Forms\Components\TextInput::make('name')->disabled(),
+                                Forms\Components\TextInput::make('language')->disabled(),
+                                Forms\Components\TextInput::make('category')->disabled(),
                             ]),
                             Forms\Components\Repeater::make('components')
                                 ->label('Components')
                                 ->schema([
-                                    Forms\Components\Select::make('type')
-                                        ->options(['HEADER' => 'Header', 'BODY' => 'Body', 'FOOTER' => 'Footer', 'BUTTONS' => 'Buttons'])
-                                        ->required()
-                                        ->live(),
-                                    Forms\Components\Select::make('format')
+                                    Forms\Components\TextInput::make('type')->disabled(),
+                                    Forms\Components\Textarea::make('text')->disabled()->visible(fn ($get) => isset($get('text'))),
+                                    Forms\Components\TextInput::make('format')
                                         ->label('Header Format')
-                                        ->options(['TEXT' => 'Text', 'IMAGE' => 'Image', 'DOCUMENT' => 'Document', 'VIDEO' => 'Video'])
+                                        ->disabled()
                                         ->visible(fn ($get) => $get('type') === 'HEADER'),
-                                    Forms\Components\Textarea::make('text')
-                                        ->label('Content')
-                                        ->helperText('For BODY, use variables like {{1}}, {{2}}.')
-                                        ->visible(fn ($get) => in_array($get('type'), ['HEADER', 'BODY', 'FOOTER'])),
                                     Forms\Components\Repeater::make('buttons')
                                         ->label('Buttons')
-                                        ->visible(fn ($get) => $get('type') === 'BUTTONS')
                                         ->schema([
-                                            Forms\Components\Select::make('type')
-                                                ->options(['QUICK_REPLY' => 'Quick Reply', 'URL' => 'URL'])
-                                                ->required(),
-                                            Forms\Components\TextInput::make('text')
-                                                ->label('Button Text')
-                                                ->required(),
-                                            Forms\Components\TextInput::make('url')
-                                                ->label('URL')
-                                                ->helperText('Required for URL buttons.')
-                                                ->visible(fn ($get) => $get('type') === 'URL'),
+                                            Forms\Components\TextInput::make('type')->disabled(),
+                                            Forms\Components\TextInput::make('text')->label('Button Text')->disabled(),
                                         ])
-                                        ->maxItems(3),
+                                        ->visible(fn ($get) => $get('type') === 'BUTTONS'),
                                 ])
-                                ->required(),
+                                ->disabled(),
                         ])
-                        ->columns(1)
-                        ->addAction(function (\Filament\Forms\Components\Actions\Action $action, \Filament\Forms\Get $get, $state) {
-                            return $action
-                                ->label('Push to Meta')
-                                ->icon('heroicon-o-paper-airplane')
-                                ->requiresConfirmation()
-                                ->form([
-                                    Forms\Components\Select::make('provider_id')
-                                        ->label('Provider to use for API credentials')
-                                        ->options(function () use ($get) {
-                                            $serviceTypeId = $get('id');
-                                            return \App\Models\Provider::where('service_type_id', $serviceTypeId)->pluck('name', 'id');
-                                        })
-                                        ->required(),
-                                ])
-                                ->action(function (array $data, MetaMessageTemplateService $templateService) use ($state) {
-                                    try {
-                                        $provider = \App\Models\Provider::find($data['provider_id']);
-                                        $response = $templateService->create($state, $provider);
-
-                                        Notification::make()
-                                            ->title('Template Submitted to Meta')
-                                            ->body('Successfully submitted template `' . ($state['name'] ?? '') . '` for approval.')
-                                            ->success()
-                                            ->send();
-                                    } catch (\Exception $e) {
-                                        Notification::make()
-                                            ->title('Failed to Submit Template')
-                                            ->body($e->getMessage())
-                                            ->danger()
-                                            ->send();
-                                    }
-                                });
-                        }),
+                        ->disabled(),
                 ]),
         ]);
     }
