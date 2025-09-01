@@ -197,24 +197,24 @@ return [
 
     'environments' => [
         'production' => [
-        'supervisor-1' => [
-            'connection' => 'redis',
-            'queue' => ['default'],
-            'balance' => 'auto',
-            'processes' => 10, // Max number of worker processes
-            'tries' => 3,     // How many times a job can be attempted
-            'timeout' => 60,
+            'supervisor-1' => [
+                'connection' => 'redis',
+                'queue' => ['default'],
+                'balance' => 'auto',
+                'processes' => 10, // Max number of worker processes
+                'tries' => 3,     // How many times a job can be attempted
+                'timeout' => 60,
+            ],
         ],
-    ],
 
-    'local' => [
-        'supervisor-1' => [
-            'connection' => 'redis',
-            'queue' => ['default'],
-            'balance' => 'auto',
-            'processes' => 3,
-            'tries' => 3,
+        'local' => [
+            'supervisor-1' => [
+                'connection' => 'redis',
+                'queue' => ['default'],
+                'balance' => 'auto',
+                'processes' => 3,
+                'tries' => 3,
+            ],
         ],
-    ],
     ],
 ];

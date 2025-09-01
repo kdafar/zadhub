@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Provider;
+use App\Multitenancy\ProviderFromRouteTenantFinder;
 use Illuminate\Broadcasting\BroadcastEvent;
 use Illuminate\Events\CallQueuedListener;
 use Illuminate\Mail\SendQueuedMailable;
@@ -10,14 +12,11 @@ use Spatie\Multitenancy\Actions\MakeQueueTenantAwareAction;
 use Spatie\Multitenancy\Actions\MakeTenantCurrentAction;
 use Spatie\Multitenancy\Actions\MigrateTenantAction;
 use Spatie\Multitenancy\Models\Tenant;
-use App\Models\Provider;
-use App\Multitenancy\ProviderFromRouteTenantFinder;
-
 
 return [
     /*
      * This class is responsible for determining which tenant should be current
-     * for the given request. 
+     * for the given request.
      *
      * This class should extend `Spatie\Multitenancy\TenantFinder\TenantFinder`
      *
@@ -32,13 +31,13 @@ return [
 
     /*
      * If there is a current tenant, the package will automatically sets the
-     * database connection to the one specified in this key. 
+     * database connection to the one specified in this key.
      */
     'tenant_database_connection_name' => null,
 
     /*
      * If there is a current tenant, the package will automatically sets the
-     * database connection to the one specified in this key. 
+     * database connection to the one specified in this key.
      */
     'landlord_database_connection_name' => null,
 
@@ -77,16 +76,16 @@ return [
      * If you want to prevent certain domains from being resolved as tenants,
      * you can list them here.
      */
-'forbidden_domains' => [
+    'forbidden_domains' => [
 
-],
+    ],
 
-/*
+    /*
  * These fields are used by tenant:artisan command to match one or more tenant.
  */
-'tenant_artisan_search_fields' => [
-    'id',
-],
+    'tenant_artisan_search_fields' => [
+        'id',
+    ],
 
     /*
      * These tasks will be performed when switching tenants.

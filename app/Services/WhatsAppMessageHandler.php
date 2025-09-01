@@ -108,7 +108,9 @@ class WhatsAppMessageHandler
             }
         }
 
-        $this->sendSystemMessage($session, 'fallback');
+        // Fetch available keywords for the provider to show in the fallback message
+        $keywords = $provider->flows()->where('is_active', true)->pluck('trigger_keyword')->filter()->unique()->values();
+        $this->sendSystemMessage($session, 'fallback', ['keywords' => $keywords->implode(', ')]);
     }
 
     private function handleProviderSelection(WhatsappSession $session, string $text): void
@@ -333,7 +335,7 @@ class WhatsAppMessageHandler
 
         if (! $template) {
             $defaults = [
-                'fallback' => "Welcome! Please send a keyword like 'menu' or 'order' to get started. If you're unsure, type 'help' for more options.",
+                'fallback' => "Sorry, I didn't understand. Please try one of the following options: {{keywords}}",
                 'provider_not_ready' => 'Sorry, this provider does not have an active flow.',
                 'invalid_provider_selection' => "Invalid selection. Please choose a provider by replying with their number:\n{{provider_list}}",
                 'flow_completed' => 'Thank you! We have received your information.',

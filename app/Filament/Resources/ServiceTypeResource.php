@@ -4,10 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ServiceTypeResource\Pages;
 use App\Models\ServiceType;
-use App\Services\Meta\MetaMessageTemplateService;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -132,7 +130,7 @@ class ServiceTypeResource extends Resource
                                 ->label('Components')
                                 ->schema([
                                     Forms\Components\TextInput::make('type')->disabled(),
-                                    Forms\Components\Textarea::make('text')->disabled()->visible(fn ($get) => isset($get('text'))),
+                                    Forms\Components\Textarea::make('text')->disabled()->visible(fn ($get) => $get('text') !== null),
                                     Forms\Components\TextInput::make('format')
                                         ->label('Header Format')
                                         ->disabled()

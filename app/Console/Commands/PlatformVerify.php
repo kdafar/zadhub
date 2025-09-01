@@ -87,7 +87,7 @@ class PlatformVerify extends Command
                 $this->warn("Onboarding service ran for '{$slug}' but returned no flow. Check logs for details.");
             }
         } catch (\Throwable $e) {
-            $this->error("An error occurred during onboarding for '{$slug}': " . $e->getMessage());
+            $this->error("An error occurred during onboarding for '{$slug}': ".$e->getMessage());
             Log::error('Onboarding command failed', ['slug' => $slug, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
     }

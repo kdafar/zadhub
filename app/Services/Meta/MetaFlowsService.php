@@ -4,7 +4,6 @@ namespace App\Services\Meta;
 
 use App\Models\FlowVersion;
 use App\Models\MetaFlow;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -29,7 +28,7 @@ class MetaFlowsService
             throw new RuntimeException('FlowVersion must be associated with a Provider to publish to Meta.');
         }
 
-        $token  = (string) $provider->api_token;
+        $token = (string) $provider->api_token;
         $wabaId = (string) data_get($provider->meta, 'waba_id');
 
         if ($token === '' || $wabaId === '') {
@@ -58,18 +57,18 @@ class MetaFlowsService
         $flowJson = $this->mapToMetaJson($def);
 
         Log::info('MetaFlowsService:create request', [
-            'waba_id'    => $wabaId,
+            'waba_id' => $wabaId,
             'categories' => $categories,
-            'flow_name'  => $fv->name ?: "Flow #{$fv->id}",
+            'flow_name' => $fv->name ?: "Flow #{$fv->id}",
         ]);
 
         // ---- CREATE DRAFT FLOW ----
         $res = Http::withToken($token)
             ->asForm()
             ->post("{$this->base}/{$wabaId}/flows", [
-                'name'       => $fv->name ?: "Flow #{$fv->id}",
+                'name' => $fv->name ?: "Flow #{$fv->id}",
                 'categories' => $categories, // array -> categories[0]… via asForm()
-                'flow_json'  => json_encode($flowJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'flow_json' => json_encode($flowJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ])
             ->throw();
 
@@ -108,7 +107,7 @@ class MetaFlowsService
 
         // ---- VALIDATION PREFLIGHT ----
         $details = $this->getFlowDetails($token, $flowId);
-        $errors  = (array) data_get($details, 'validation_errors', []);
+        $errors = (array) data_get($details, 'validation_errors', []);
         if (! empty($errors)) {
             throw new RuntimeException('Flow has validation errors: '.json_encode($errors, JSON_UNESCAPED_UNICODE));
         }
@@ -117,7 +116,7 @@ class MetaFlowsService
             ['flow_version_id' => $fv->id],
             [
                 'meta_flow_id' => $flowId,
-                'status'       => 'draft',
+                'status' => 'draft',
                 'last_payload' => $details,
             ]
         );
@@ -140,7 +139,7 @@ class MetaFlowsService
 
         // Final preflight validation
         $details = $this->getFlowDetails($token, $mf->meta_flow_id);
-        $errors  = (array) data_get($details, 'validation_errors', []);
+        $errors = (array) data_get($details, 'validation_errors', []);
         if (! empty($errors)) {
             throw new RuntimeException('Flow has validation errors: '.json_encode($errors, JSON_UNESCAPED_UNICODE));
         }
@@ -150,7 +149,7 @@ class MetaFlowsService
             ->post("{$this->base}/{$mf->meta_flow_id}/publish", [])
             ->throw();
 
-        $mf->status       = 'published';
+        $mf->status = 'published';
         $mf->published_at = now();
         $mf->last_payload = $details;
         $mf->save();
@@ -187,7 +186,7 @@ class MetaFlowsService
     {
         $version = (string) data_get($flowJson, 'version', '');
         $screens = (array) data_get($flowJson, 'screens', []);
-        $v3plus  = $version !== '' && version_compare($version, '3.0', '>=');
+        $v3plus = $version !== '' && version_compare($version, '3.0', '>=');
 
         // If older spec (<3.0), assume endpoint not required (unless you detect data_channel_uri).
         if (! $v3plus) {
@@ -256,23 +255,23 @@ class MetaFlowsService
         $aliases = (array) config('meta.flows.category_aliases', [
             // domain → Meta enum (extend as needed)
             'FOOD_DELIVERY' => 'OTHER',
-            'RESTAURANT'    => 'OTHER',
-            'ORDERING'      => 'OTHER',
-            'REORDER'       => 'OTHER',
-            'CHECKOUT'      => 'OTHER',
-            'CONTACT'       => 'CONTACT_US',
-            'CONTACT_US'    => 'CONTACT_US',
-            'SUPPORT'       => 'CUSTOMER_SUPPORT',
-            'HELP'          => 'CUSTOMER_SUPPORT',
-            'RATING'        => 'SURVEY',
-            'FEEDBACK'      => 'SURVEY',
-            'APPOINTMENT'   => 'APPOINTMENT_BOOKING',
-            'BOOKING'       => 'APPOINTMENT_BOOKING',
-            'LOGIN'         => 'SIGN_IN',
-            'SIGNUP'        => 'SIGN_UP',
+            'RESTAURANT' => 'OTHER',
+            'ORDERING' => 'OTHER',
+            'REORDER' => 'OTHER',
+            'CHECKOUT' => 'OTHER',
+            'CONTACT' => 'CONTACT_US',
+            'CONTACT_US' => 'CONTACT_US',
+            'SUPPORT' => 'CUSTOMER_SUPPORT',
+            'HELP' => 'CUSTOMER_SUPPORT',
+            'RATING' => 'SURVEY',
+            'FEEDBACK' => 'SURVEY',
+            'APPOINTMENT' => 'APPOINTMENT_BOOKING',
+            'BOOKING' => 'APPOINTMENT_BOOKING',
+            'LOGIN' => 'SIGN_IN',
+            'SIGNUP' => 'SIGN_UP',
             // template categories → best-fit flow categories
-            'UTILITY'       => 'OTHER',
-            'MARKETING'     => 'LEAD_GENERATION',
+            'UTILITY' => 'OTHER',
+            'MARKETING' => 'LEAD_GENERATION',
         ]);
 
         $arr = is_array($raw) ? $raw : (array) $raw;

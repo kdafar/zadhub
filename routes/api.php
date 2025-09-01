@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\AutomationTriggerController;
 use App\Http\Controllers\Api\WhatsAppWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::match(['get', 'post'], '/whatsapp/webhook/{provider:slug}', [WhatsAppWebhookController::class, 'handle']);
+
+Route::post('/automations/trigger', [AutomationTriggerController::class, 'handle']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();

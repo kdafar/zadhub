@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\FlowTemplateResource\Pages;
 
 use App\Filament\Resources\FlowTemplateResource;
-use App\Models\FlowVersion;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Repeater;
@@ -78,24 +77,33 @@ class BuildTemplate extends EditRecord
                                     ->label('Action Type')
                                     ->options([
                                         'api_call' => 'API Call',
+                                        'send_message_template' => 'Send Message Template',
                                     ])
                                     ->live()
                                     ->required(),
                                 Forms\Components\Group::make()
                                     ->schema(function (Get $get) {
-                                        if ($get('type') !== 'api_call') {
-                                            return [];
+                                        if ($get('type') === 'api_call') {
+                                            return [
+                                                Forms\Components\TextInput::make('config.url')->label('URL')->required(),
+                                                Forms\Components\Select::make('config.method')->options(['GET', 'POST', 'PUT', 'DELETE'])->default('POST'),
+                                                Forms\Components\KeyValue::make('config.headers')->label('Headers'),
+                                                Forms\Components\KeyValue::make('config.body')->label('Body/Payload'),
+                                                Forms\Components\TextInput::make('config.save_to')->label('Save Response To')->default('api_response'),
+                                                Forms\Components\TextInput::make('config.on_success')->label('Next Screen on Success'),
+                                                Forms\Components\TextInput::make('config.on_failure')->label('Next Screen on Failure'),
+                                            ];
+                                        } elseif ($get('type') === 'send_message_template') {
+                                            return [
+                                                Forms\Components\TextInput::make('config.template_name')->label('Template Name')->required(),
+                                                Forms\Components\TextInput::make('config.language_code')->label('Language Code')->default('en_US')->required(),
+                                                Forms\Components\KeyValue::make('config.variables')
+                                                    ->label('Template Variables')
+                                                    ->helperText('Map session data to template placeholders. Key = placeholder index, Value = session data key. e.g., 1 => user.name'),
+                                            ];
                                         }
 
-                                        return [
-                                            Forms\Components\TextInput::make('config.url')->label('URL')->required(),
-                                            Forms\Components\Select::make('config.method')->options(['GET', 'POST', 'PUT', 'DELETE'])->default('POST'),
-                                            Forms\Components\KeyValue::make('config.headers')->label('Headers'),
-                                            Forms\Components\KeyValue::make('config.body')->label('Body/Payload'),
-                                            Forms\Components\TextInput::make('config.save_to')->label('Save Response To')->default('api_response'),
-                                            Forms\Components\TextInput::make('config.on_success')->label('Next Screen on Success'),
-                                            Forms\Components\TextInput::make('config.on_failure')->label('Next Screen on Failure'),
-                                        ];
+                                        return [];
                                     }),
                             ])
                             ->collapsible()
@@ -135,7 +143,7 @@ class BuildTemplate extends EditRecord
 
         $version = $this->record->versions()->latest('version')->first();
 
-        if (!$version) {
+        if (! $version) {
             $version = $this->record->versions()->create([
                 'version' => 1,
                 'definition' => [

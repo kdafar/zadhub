@@ -11,7 +11,6 @@ use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Str;
-use Filament\Resources\Pages\EditRecord;
 
 class EditServiceType extends EditRecord
 {
@@ -33,15 +32,19 @@ class EditServiceType extends EditRecord
                         ->label('Message Templates')
                         ->options(function (Forms\Get $get) {
                             $providerId = $get('provider_id');
-                            if (!$providerId) return [];
+                            if (! $providerId) {
+                                return [];
+                            }
                             try {
                                 $templates = app(MetaFetchService::class)->fetchMessageTemplates(Provider::find($providerId));
+
                                 return collect($templates)
                                     ->where('status', 'APPROVED')
                                     ->pluck('name', 'name')
                                     ->toArray();
                             } catch (\Exception $e) {
                                 Notification::make()->title('Failed to fetch message templates')->body($e->getMessage())->danger()->send();
+
                                 return [];
                             }
                         })
@@ -51,12 +54,16 @@ class EditServiceType extends EditRecord
                         ->label('Flows')
                         ->options(function (Forms\Get $get) {
                             $providerId = $get('provider_id');
-                            if (!$providerId) return [];
+                            if (! $providerId) {
+                                return [];
+                            }
                             try {
                                 $flows = app(MetaFetchService::class)->fetchFlows(Provider::find($providerId));
+
                                 return collect($flows)->pluck('name', 'id')->toArray();
                             } catch (\Exception $e) {
                                 Notification::make()->title('Failed to fetch flows')->body($e->getMessage())->danger()->send();
+
                                 return [];
                             }
                         })
@@ -68,7 +75,7 @@ class EditServiceType extends EditRecord
                     $serviceType = $this->record;
 
                     // Import Message Templates
-                    if (!empty($data['message_templates_to_import'])) {
+                    if (! empty($data['message_templates_to_import'])) {
                         $allTemplates = collect($fetcher->fetchMessageTemplates($provider));
                         $existingTemplates = $serviceType->message_templates ?? [];
                         foreach ($data['message_templates_to_import'] as $templateName) {
@@ -81,14 +88,14 @@ class EditServiceType extends EditRecord
                     }
 
                     // Import Flows
-                    if (!empty($data['flows_to_import'])) {
+                    if (! empty($data['flows_to_import'])) {
                         foreach ($data['flows_to_import'] as $flowId) {
                             $flowData = $fetcher->fetchFlowDefinition($flowId, $provider);
                             $flowInfo = collect($fetcher->fetchFlows($provider))->firstWhere('id', $flowId);
 
                             $template = FlowTemplate::create([
-                                'name' => '[META] ' . ($flowInfo['name'] ?? 'Imported Flow ' . $flowId),
-                                'slug' => Str::slug('meta ' . ($flowInfo['name'] ?? 'imported-' . $flowId)),
+                                'name' => '[META] '.($flowInfo['name'] ?? 'Imported Flow '.$flowId),
+                                'slug' => Str::slug('meta '.($flowInfo['name'] ?? 'imported-'.$flowId)),
                                 'service_type_id' => $serviceType->id,
                             ]);
 

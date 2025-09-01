@@ -5,7 +5,6 @@ namespace App\Services;
 use Illuminate\Support\Facades\Log;
 use Netflie\WhatsAppCloudApi\Message\AudioMessage;
 use Netflie\WhatsAppCloudApi\Message\ButtonReply;
-use Netflie\WhatsAppCloudApi\Message\ContactMessage;
 use Netflie\WhatsAppCloudApi\Message\DocumentMessage;
 use Netflie\WhatsAppCloudApi\Message\ImageMessage;
 use Netflie\WhatsAppCloudApi\Message\InteractiveMessage\Action;
@@ -22,8 +21,7 @@ use Netflie\WhatsAppCloudApi\WhatsAppCloudApi;
 
 class WhatsAppApiService
 {
-    public function __construct(protected WhatsAppCloudApi $client)
-    {}
+    public function __construct(protected WhatsAppCloudApi $client) {}
 
     public function sendTextMessage(string $to, string $message, bool $previewUrl = false): void
     {
@@ -35,20 +33,19 @@ class WhatsAppApiService
         }
     }
 
-public function sendImage(string $to, string $linkOrId, string $caption = ''): void
-{
-    // 1. Create the ImageMessage with only the link or ID
-    $imageMessage = new ImageMessage($linkOrId);
+    public function sendImage(string $to, string $linkOrId, string $caption = ''): void
+    {
+        // 1. Create the ImageMessage with only the link or ID
+        $imageMessage = new ImageMessage($linkOrId);
 
-    // 2. If a caption exists, set it on the object
-    if (!empty($caption)) {
-        $imageMessage->setCaption($caption);
+        // 2. If a caption exists, set it on the object
+        if (! empty($caption)) {
+            $imageMessage->setCaption($caption);
+        }
+
+        // 3. Pass the fully constructed object to the sendMedia method
+        $this->sendMedia($imageMessage, $to);
     }
-
-    // 3. Pass the fully constructed object to the sendMedia method
-    $this->sendMedia($imageMessage, $to);
-}
-
 
     public function sendDocument(string $to, string $linkOrId, string $filename, string $caption = ''): void
     {
@@ -144,7 +141,7 @@ public function sendImage(string $to, string $linkOrId, string $caption = ''): v
             );
 
             $interactive = new \Netflie\WhatsAppCloudApi\Message\Flow\FlowMessage($header, $body, $footer, $action);
-            $options = (new Options())->setPreviewUrl(false);
+            $options = (new Options)->setPreviewUrl(false);
 
             $this->client->sendInteractiveMessage($to, $interactive, $options);
             Log::info('WhatsApp flow message sent successfully.', ['to' => $to]);

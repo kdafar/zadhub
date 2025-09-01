@@ -13,7 +13,7 @@ class WhatsAppApiServiceFactory
         $useFake = config('services.whatsapp.fake', app()->environment('local'));
 
         if ($useFake) {
-            return new WhatsAppApiServiceFake();
+            return new WhatsAppApiServiceFake;
         }
 
         $token = $provider?->api_token;
@@ -26,7 +26,7 @@ class WhatsAppApiServiceFactory
                 'has_phone_id' => ! empty($phoneId),
             ]);
 
-            throw new \Exception('WhatsApp API credentials are not configured for provider ID: ' . $provider?->id);
+            throw new \Exception('WhatsApp API credentials are not configured for provider ID: '.$provider?->id);
         }
 
         $client = new WhatsAppCloudApi([

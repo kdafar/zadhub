@@ -50,23 +50,24 @@ class MetaMessageTemplateService
         return array_map(function ($component) {
             $formatted = ['type' => $component['type']];
 
-            if (!empty($component['text'])) {
+            if (! empty($component['text'])) {
                 $formatted['text'] = $component['text'];
             }
 
-            if (!empty($component['format'])) {
+            if (! empty($component['format'])) {
                 $formatted['format'] = $component['format'];
             }
 
-            if (!empty($component['buttons'])) {
+            if (! empty($component['buttons'])) {
                 $formatted['buttons'] = array_map(function ($button) {
                     $formattedButton = [
                         'type' => $button['type'],
                         'text' => $button['text'],
                     ];
-                    if (!empty($button['url'])) {
+                    if (! empty($button['url'])) {
                         $formattedButton['url'] = $button['url'];
                     }
+
                     return $formattedButton;
                 }, $component['buttons']);
             }

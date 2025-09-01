@@ -4,13 +4,19 @@ namespace App\Services\Flows;
 
 use App\Models\ProviderCredential;
 use App\Models\WhatsappSession;
+use App\Services\WhatsAppApiServiceFactory;
 use Illuminate\Http\Client\Factory as HttpClient;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
+use Netflie\WhatsAppCloudApi\Message\Template\Component;
 
 class FlowActionService
 {
-    public function __construct(protected HttpClient $http) {}
+    public function __construct(
+        protected HttpClient $http,
+        protected WhatsAppApiServiceFactory $apiFactory
+    ) {}
 
     /**
      * Execute a list of actions defined for a screen.
@@ -28,6 +34,7 @@ class FlowActionService
         foreach ($actions as $action) {
             $result = match ($action['type'] ?? null) {
                 'api_call' => $this->handleApiCall($action, $session),
+                'send_message_template' => $this->handleSendMessageTemplate($action, $session),
                 default => null,
             };
 
@@ -38,6 +45,42 @@ class FlowActionService
         }
 
         return $nextScreenId;
+    }
+
+    protected function handleSendMessageTemplate(array $action, WhatsappSession $session): ?string
+    {
+        $config = $action['config'] ?? [];
+        $templateName = $config['template_name'] ?? null;
+        $language = $config['language_code'] ?? 'en_US';
+        $context = $session->context ?? [];
+
+        if (! $templateName) {
+            Log::error('Flow action send_message_template is missing template_name', ['session_id' => $session->id]);
+
+            return null;
+        }
+
+        $provider = $session->provider;
+        $apiService = $this->apiFactory->make($provider);
+
+        $variables = $config['variables'] ?? [];
+        $components = null;
+
+        if (! empty($variables)) {
+            $bodyParams = [];
+            foreach ($variables as $placeholder => $key) {
+                $value = Arr::get($context, $key);
+                if ($value !== null) {
+                    $bodyParams[] = ['type' => 'text', 'text' => (string) $value];
+                }
+            }
+            $components = new Component([], $bodyParams, []);
+        }
+
+        $apiService->sendTemplate($session->phone, $templateName, $language, $components);
+
+        // This action does not direct the flow, so it returns null.
+        return null;
     }
 
     private function handleApiCall(array $action, WhatsappSession $session): ?string

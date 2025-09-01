@@ -35,12 +35,13 @@ class ListFlowTemplates extends ListRecords
                         $jsonContent = file_get_contents($data['json_file']->getRealPath());
                         $definition = json_decode($jsonContent, true);
 
-                        if (json_last_error() !== JSON_ERROR_NONE || !isset($definition['screens'])) {
+                        if (json_last_error() !== JSON_ERROR_NONE || ! isset($definition['screens'])) {
                             \Filament\Notifications\Notification::make()
                                 ->title('Import Failed')
                                 ->body('Invalid JSON file or missing "screens" key.')
                                 ->danger()
                                 ->send();
+
                             return;
                         }
 

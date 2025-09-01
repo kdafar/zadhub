@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\Provider;
 use App\Services\WhatsAppApiServiceFactory;
 use Illuminate\Console\Command;
-use Netflie\WhatsAppCloudApi\Message\Template\Component;
 use Illuminate\Support\Facades\Log;
 
 class SendTestMessage extends Command
@@ -72,6 +71,7 @@ class SendTestMessage extends Command
                     $link = $this->option('link');
                     if (! $link) {
                         $this->error('--link option is required for audio messages.');
+
                         return self::FAILURE;
                     }
                     $service->sendAudio($to, $link);
@@ -81,6 +81,7 @@ class SendTestMessage extends Command
                     $link = $this->option('link');
                     if (! $link) {
                         $this->error('--link option is required for video messages.');
+
                         return self::FAILURE;
                     }
                     $caption = $this->option('text') ?? '';
@@ -91,6 +92,7 @@ class SendTestMessage extends Command
                     $link = $this->option('link');
                     if (! $link) {
                         $this->error('--link option is required for sticker messages.');
+
                         return self::FAILURE;
                     }
                     $service->sendSticker($to, $link);
@@ -101,6 +103,7 @@ class SendTestMessage extends Command
                     $coords = explode(',', $this->option('text', ''));
                     if (count($coords) !== 2) {
                         $this->error('For location, --text must be in the format "latitude,longitude"');
+
                         return self::FAILURE;
                     }
                     $service->sendLocation($to, (float) $coords[0], (float) $coords[1], 'Test Location');
@@ -110,6 +113,7 @@ class SendTestMessage extends Command
                     $name = $this->option('template');
                     if (! $name) {
                         $this->error('--template option is required for template messages.');
+
                         return self::FAILURE;
                     }
                     // This is a simple example. Real components would be more complex.
@@ -122,7 +126,7 @@ class SendTestMessage extends Command
                     return self::FAILURE;
             }
         } catch (\Throwable $e) {
-            $this->error('An error occurred while sending the message: ' . $e->getMessage());
+            $this->error('An error occurred while sending the message: '.$e->getMessage());
             Log::error('SendTestMessage command failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
             return self::FAILURE;

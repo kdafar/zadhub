@@ -21,7 +21,7 @@ class Dashboard extends \Filament\Pages\Dashboard
         ];
     }
 
-     public function hasLogo(): bool
+    public function hasLogo(): bool
     {
         return false; // Set to false to hide the logo and fix the error
     }

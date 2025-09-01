@@ -4,7 +4,6 @@ namespace App\Services\Meta;
 
 use App\Models\Provider;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class MetaFetchService
@@ -54,7 +53,7 @@ class MetaFetchService
 
         return $response->json('data', []);
     }
-    
+
     public function fetchFlowDefinition(string $flowId, Provider $provider): array
     {
         $token = (string) $provider->api_token;

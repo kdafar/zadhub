@@ -11,7 +11,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FlowTemplateResource extends Resource
 {
@@ -102,14 +101,14 @@ class FlowTemplateResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->action(function (FlowTemplate $record) {
                         $version = $record->latestVersion;
-                        if (!$version) {
+                        if (! $version) {
                             return;
                         }
                         $json = json_encode($version->definition, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-                        $filename = $record->slug . '-v' . $version->version . '.json';
+                        $filename = $record->slug.'-v'.$version->version.'.json';
 
                         return response()->streamDownload(
-                            fn () => print($json),
+                            fn () => print ($json),
                             $filename
                         );
                     }),

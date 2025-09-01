@@ -3,13 +3,10 @@
 namespace App\Services;
 
 use App\Models\Flow;
-use App\Models\FlowTemplate;
 use App\Models\FlowTrigger;
-use App\Models\FlowVersion;
 use App\Models\Provider;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 
 class ProviderOnboardingService
 {
@@ -18,6 +15,7 @@ class ProviderOnboardingService
         $serviceType = $provider->serviceType;
         if (! $serviceType) {
             Log::warning('Onboarding aborted: Provider has no serviceType.', ['provider_id' => $provider->id]);
+
             return;
         }
 
@@ -28,13 +26,16 @@ class ProviderOnboardingService
                 'provider_id' => $provider->id,
                 'service_type_id' => $serviceType->id,
             ]);
+
             return;
         }
 
         DB::transaction(function () use ($provider, $templates) {
             foreach ($templates as $template) {
                 $templateVersion = $template->latestVersion;
-                if (!$templateVersion) continue;
+                if (! $templateVersion) {
+                    continue;
+                }
 
                 // Create a new Flow for the provider, based on the template
                 $flow = Flow::firstOrCreate(
@@ -66,7 +67,7 @@ class ProviderOnboardingService
 
                     Log::info('Onboarding: Cloned new version for provider.', [
                         'flow_id' => $flow->id,
-                        'new_version_id' => $newVersion->id
+                        'new_version_id' => $newVersion->id,
                     ]);
                 }
 

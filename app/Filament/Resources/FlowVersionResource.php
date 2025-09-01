@@ -59,10 +59,10 @@ class FlowVersionResource extends Resource
             ]),
 
             Forms\Components\Grid::make(3)->schema([
-            Forms\Components\TextInput::make('version')->numeric()->minValue(1)->default(1),
-            Forms\Components\TextInput::make('status')->disabled(),
-            Forms\Components\DateTimePicker::make('published_at')->disabled(),
-        ]),
+                Forms\Components\TextInput::make('version')->numeric()->minValue(1)->default(1),
+                Forms\Components\TextInput::make('status')->disabled(),
+                Forms\Components\DateTimePicker::make('published_at')->disabled(),
+            ]),
 
             Forms\Components\Textarea::make('definition')
                 ->rows(28)
