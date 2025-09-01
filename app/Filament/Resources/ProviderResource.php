@@ -185,9 +185,6 @@ class ProviderResource extends Resource
     {
         return [
             ProviderCredentialsRelationManager::class,
-            ProviderFlowPinsRelationManager::class,
-            ProviderFlowOverridesRelationManager::class,
-            ProviderRoutingRulesRelationManager::class,
             ProviderHealthChecksRelationManager::class,
             ProviderRateLimitsRelationManager::class,
             ProviderWebhookLogsRelationManager::class,
