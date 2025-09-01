@@ -60,15 +60,7 @@ class ServiceType extends Model
         return $this->hasMany(Provider::class, 'service_type_id');
     }
 
-    public function providerFlows()
-    {
-        return $this->hasMany(ProviderFlow::class, 'service_type_id');
-    }
-
-    public function keywords()
-    {
-        return $this->hasMany(ServiceKeyword::class, 'service_type_id');
-    }
+    
 
     /** Scopes */
     public function scopeActive($q)

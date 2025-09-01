@@ -61,20 +61,9 @@ class Provider extends Model implements HasMedia
         return $this->hasMany(ProviderCredential::class);
     }
 
-    public function routingRules()
-    {
-        return $this->hasMany(ProviderRoutingRule::class);
-    }
+    
 
-    public function flowPins()
-    {
-        return $this->hasMany(ProviderFlowPin::class);
-    }
-
-    public function flowOverrides()
-    {
-        return $this->hasMany(ProviderFlowOverride::class);
-    }
+    
 
     public function webhookLogs()
     {

@@ -25,3 +25,4 @@ class AutomationStep extends Model
         return $this->belongsTo(Automation::class);
     }
 }
+
