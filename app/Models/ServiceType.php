@@ -60,8 +60,6 @@ class ServiceType extends Model
         return $this->hasMany(Provider::class, 'service_type_id');
     }
 
-    
-
     /** Scopes */
     public function scopeActive($q)
     {

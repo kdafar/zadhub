@@ -1,0 +1,666 @@
+/* ==========================================================================
+   ENHANCED GLOBAL CSS - FLUID RESPONSIVE DESIGN (Tailwind v4 Compatible)
+   ========================================================================== */
+
+@import "tailwindcss/preflight";
+@tailwind utilities;
+
+/* ==========================================================================
+   1. CSS VARIABLES (ENHANCED THEME SYSTEM)
+   ========================================================================== */
+
+:root {
+  /* --------------------------------------------------------------------------
+   * FONT VARIABLES
+  -------------------------------------------------------------------------- */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Lexend Deca", ui-sans-serif, system-ui, sans-serif;
+
+  /* --------------------------------------------------------------------------
+   * LIGHT THEME COLORS (Enhanced with better contrast)
+  -------------------------------------------------------------------------- */
+  --background: 0 0% 100%;
+  --foreground: 221 44% 16%;
+
+  --card: 0 0% 99%;
+  --card-foreground: 221 44% 16%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 221 44% 16%;
+
+  --primary: 39 98% 53%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 0 0% 90%;
+  --secondary-foreground: 221 44% 16%;
+
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 40%;
+
+  --accent: 39 98% 95%;
+  --accent-foreground: 221 44% 16%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 0 0% 89%;
+  --input: 0 0% 89%;
+  --ring: 39 98% 53%;
+
+  /* Success and warning colors */
+  --success: 142 76% 36%;
+  --success-foreground: 0 0% 98%;
+  --warning: 45 93% 47%;
+  --warning-foreground: 0 0% 98%;
+
+  /* Enhanced spacing and sizing */
+  --radius: 0.75rem;
+  --container-padding: clamp(1rem, 5vw, 2rem);
+  --section-spacing: clamp(4rem, 10vw, 8rem);
+}
+
+.dark {
+  /* --------------------------------------------------------------------------
+   * DARK THEME COLORS (Enhanced for better accessibility)
+  -------------------------------------------------------------------------- */
+  --background: 221 44% 8%;
+  --foreground: 0 0% 95%;
+
+  --card: 221 44% 10%;
+  --card-foreground: 0 0% 95%;
+
+  --popover: 221 44% 8%;
+  --popover-foreground: 0 0% 95%;
+
+  --primary: 39 98% 53%;
+  --primary-foreground: 221 44% 16%;
+
+  --secondary: 221 44% 18%;
+  --secondary-foreground: 0 0% 95%;
+
+  --muted: 221 44% 15%;
+  --muted-foreground: 0 0% 65%;
+
+  --accent: 221 44% 18%;
+  --accent-foreground: 0 0% 95%;
+
+  --destructive: 0 75% 55%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 221 44% 18%;
+  --input: 221 44% 18%;
+  --ring: 39 98% 53%;
+
+  --success: 142 70% 45%;
+  --success-foreground: 0 0% 98%;
+  --warning: 45 90% 55%;
+  --warning-foreground: 221 44% 16%;
+}
+
+/* ==========================================================================
+   2. ENHANCED BASE STYLES & FLUID RESPONSIVE DESIGN
+   ========================================================================== */
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  @apply scroll-smooth antialiased;
+  scroll-padding-top: clamp(4rem, 8vw, 6rem);
+  font-feature-settings: "cv11", "ss01";
+  font-variant-numeric: oldstyle-nums;
+}
+
+body {
+  @apply bg-background text-foreground;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "rlig" 1, "calt" 1, "kern" 1;
+}
+
+/* Enhanced Custom Scrollbar */
+::-webkit-scrollbar {
+  width: clamp(8px, 2vw, 14px);
+  height: clamp(8px, 2vw, 14px);
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted/50;
+  border-radius: calc(var(--radius) / 2);
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary/60;
+  border-radius: calc(var(--radius) / 2);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/80;
+}
+
+/* FLUID TYPOGRAPHY SYSTEM */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  @apply font-bold tracking-tight text-foreground;
+  text-wrap: balance;
+  line-height: 1.2;
+}
+
+/* Enhanced Fluid Typography with Better Scaling */
+h1 {
+  font-size: clamp(2.25rem, 1.5rem + 3.75vw, 5rem); /* 36px -> 80px */
+  @apply leading-none;
+  letter-spacing: -0.025em;
+}
+
+h2 {
+  font-size: clamp(1.875rem, 1.25rem + 3.125vw, 4rem); /* 30px -> 64px */
+  @apply leading-tight;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  font-size: clamp(1.5rem, 1rem + 2.5vw, 3rem); /* 24px -> 48px */
+  @apply leading-tight;
+  letter-spacing: -0.015em;
+}
+
+h4 {
+  font-size: clamp(1.25rem, 0.875rem + 1.875vw, 2.25rem); /* 20px -> 36px */
+  @apply leading-snug;
+  letter-spacing: -0.01em;
+}
+
+h5 {
+  font-size: clamp(1.125rem, 0.75rem + 1.875vw, 1.875rem); /* 18px -> 30px */
+  @apply leading-snug;
+}
+
+h6 {
+  font-size: clamp(1rem, 0.75rem + 1.25vw, 1.5rem); /* 16px -> 24px */
+  @apply leading-normal;
+}
+
+/* Enhanced Body Text */
+p, ul, ol, li {
+  font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem); /* 16px -> 18px */
+  @apply leading-relaxed text-foreground/85;
+  text-wrap: pretty;
+  hyphens: auto;
+}
+
+/* Enhanced Links */
+a {
+  @apply text-primary font-medium decoration-2 underline-offset-4;
+  @apply transition-all duration-200 ease-in-out;
+  @apply hover:text-primary/80 hover:underline;
+}
+
+/* Enhanced Typography Elements */
+strong, b {
+  @apply font-semibold text-foreground;
+}
+
+em, i {
+  @apply italic text-foreground/90;
+}
+
+code {
+  @apply bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md text-sm font-mono;
+  font-size: 0.875em;
+}
+
+pre {
+  @apply bg-muted p-4 rounded-lg overflow-x-auto text-sm;
+}
+
+blockquote {
+  @apply pl-4 sm:pl-6 italic border-l-4 border-primary/50 text-foreground/90;
+  @apply bg-accent/30 py-2 rounded-r-lg;
+}
+
+hr {
+  @apply border-border my-8 sm:my-12;
+}
+
+/* Enhanced Form Elements */
+input, textarea, select {
+  @apply bg-background border-input;
+}
+
+button {
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+/* ==========================================================================
+   3. ENHANCED RESPONSIVE COMPONENT CLASSES
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+ * Fluid Container System
+-------------------------------------------------------------------------- */
+.container {
+  @apply w-full mx-auto;
+  padding-left: var(--container-padding);
+  padding-right: var(--container-padding);
+  max-width: min(100% - 2rem, 1280px);
+}
+
+.container-narrow {
+  @apply w-full mx-auto;
+  padding-left: var(--container-padding);
+  padding-right: var(--container-padding);
+  max-width: min(100% - 2rem, 768px);
+}
+
+.container-wide {
+  @apply w-full mx-auto;
+  padding-left: var(--container-padding);
+  padding-right: var(--container-padding);
+  max-width: min(100% - 2rem, 1536px);
+}
+
+/* --------------------------------------------------------------------------
+ * Accessibility Enhancements
+-------------------------------------------------------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.focus-ring {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  @apply transition-shadow duration-200 ease-in-out;
+}
+
+:focus-visible {
+  @apply focus-ring;
+}
+
+/* Skip to content link */
+.skip-link {
+  @apply absolute left-4 top-4 z-50 px-4 py-2 bg-primary text-primary-foreground;
+  @apply rounded-md font-medium transform -translate-y-full;
+  @apply focus:translate-y-0 transition-transform;
+}
+
+/* --------------------------------------------------------------------------
+ * Enhanced Gradient Text
+-------------------------------------------------------------------------- */
+.gradient-text {
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(135deg, 
+    hsl(var(--primary)) 0%, 
+    hsl(var(--primary)) 40%,
+    hsl(221, 44%, 35%) 100%
+  );
+}
+
+.gradient-text-alt {
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(45deg, 
+    hsl(var(--primary)) 0%, 
+    hsl(39, 98%, 45%) 50%,
+    hsl(221, 44%, 25%) 100%
+  );
+}
+
+/* --------------------------------------------------------------------------
+ * Fluid Section System
+-------------------------------------------------------------------------- */
+.section-padding {
+  padding-top: var(--section-spacing);
+  padding-bottom: var(--section-spacing);
+}
+
+.section-padding-sm {
+  padding-top: clamp(2rem, 6vw, 4rem);
+  padding-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.section-padding-lg {
+  padding-top: clamp(6rem, 15vw, 12rem);
+  padding-bottom: clamp(6rem, 15vw, 12rem);
+}
+
+/* Enhanced Section Headings */
+.section-heading {
+  @apply text-center mx-auto;
+  max-width: min(100%, 48rem);
+}
+
+.section-heading .eyebrow {
+  @apply block text-primary font-semibold uppercase tracking-wider;
+  font-size: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+  margin-bottom: clamp(0.5rem, 2vw, 1rem);
+}
+
+.section-heading .heading {
+  font-size: clamp(1.875rem, 1.5rem + 1.875vw, 3rem);
+  @apply font-bold leading-tight;
+}
+
+.section-heading .subheading {
+  @apply text-foreground/70;
+  font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
+  margin-top: clamp(1rem, 3vw, 1.5rem);
+}
+
+/* --------------------------------------------------------------------------
+ * Enhanced Form Components
+-------------------------------------------------------------------------- */
+.form-group {
+  @apply mb-4 sm:mb-6;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-foreground/90 mb-2;
+  font-size: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+}
+
+.form-input {
+  @apply block w-full rounded-lg border border-input bg-background px-4 py-3;
+  @apply text-foreground placeholder:text-muted-foreground;
+  @apply shadow-sm transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent;
+  @apply disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted;
+  font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+}
+
+.form-textarea {
+  @apply form-input resize-y min-h-[120px];
+}
+
+.form-select {
+  @apply form-input cursor-pointer;
+}
+
+.form-checkbox {
+  @apply h-4 w-4 rounded border-2 border-input text-primary;
+  @apply focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  @apply transition-colors duration-200;
+}
+
+.form-error {
+  @apply text-sm font-medium text-destructive mt-2;
+}
+
+.form-help {
+  @apply text-sm text-muted-foreground mt-2;
+}
+
+/* --------------------------------------------------------------------------
+ * Button System
+-------------------------------------------------------------------------- */
+.btn {
+  @apply inline-flex items-center justify-center rounded-lg font-medium;
+  @apply transition-all duration-200 ease-in-out;
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  @apply disabled:pointer-events-none disabled:opacity-50;
+  font-size: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+}
+
+.btn-sm {
+  @apply px-3 py-2 text-sm;
+  height: clamp(2rem, 4vw, 2.25rem);
+}
+
+.btn-md {
+  @apply px-4 py-2.5;
+  height: clamp(2.5rem, 5vw, 2.75rem);
+}
+
+.btn-lg {
+  @apply px-6 py-3;
+  height: clamp(3rem, 6vw, 3.5rem);
+}
+
+.btn-primary {
+  @apply btn bg-primary text-primary-foreground;
+  @apply hover:bg-primary/90 active:bg-primary/95;
+}
+
+.btn-secondary {
+  @apply btn bg-secondary text-secondary-foreground;
+  @apply hover:bg-secondary/80 active:bg-secondary/90;
+}
+
+.btn-outline {
+  @apply btn border-2 border-primary text-primary bg-transparent;
+  @apply hover:bg-primary hover:text-primary-foreground;
+}
+
+.btn-ghost {
+  @apply btn text-foreground bg-transparent;
+  @apply hover:bg-accent hover:text-accent-foreground;
+}
+
+/* --------------------------------------------------------------------------
+ * Card System
+-------------------------------------------------------------------------- */
+.card {
+  @apply bg-card text-card-foreground rounded-lg border shadow-sm;
+  @apply transition-shadow duration-200;
+}
+
+.card-hover {
+  @apply card hover:shadow-md;
+}
+
+.card-interactive {
+  @apply card-hover cursor-pointer;
+  @apply hover:shadow-lg hover:scale-[1.02];
+  @apply active:scale-[0.98] transition-transform;
+}
+
+.card-header {
+  @apply p-4 sm:p-6;
+}
+
+.card-body {
+  @apply px-4 sm:px-6 pb-4 sm:pb-6;
+}
+
+.card-footer {
+  @apply px-4 sm:px-6 py-4 border-t bg-muted/30;
+}
+
+/* --------------------------------------------------------------------------
+ * Badge System
+-------------------------------------------------------------------------- */
+.badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  @apply transition-colors duration-200;
+}
+
+.badge-default {
+  @apply badge bg-primary/10 text-primary;
+}
+
+.badge-secondary {
+  @apply badge bg-secondary text-secondary-foreground;
+}
+
+.badge-success {
+  @apply badge bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+}
+
+.badge-warning {
+  @apply badge bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+}
+
+.badge-error {
+  @apply badge bg-destructive/10 text-destructive;
+}
+
+/* ==========================================================================
+   4. ENHANCED UTILITIES
+   ========================================================================== */
+
+/* Layout Utilities */
+.bleed-full {
+  @apply w-screen relative left-1/2 -translate-x-1/2;
+}
+
+.bleed-container {
+  margin-left: calc(-1 * var(--container-padding));
+  margin-right: calc(-1 * var(--container-padding));
+}
+
+/* Enhanced Background Gradients */
+.bg-hero-brand {
+  background-image: 
+    radial-gradient(at 27% 37%, hsla(var(--primary), 0.15) 0px, transparent 50%),
+    radial-gradient(at 97% 21%, hsla(221, 44%, 16%, 0.1) 0px, transparent 50%),
+    radial-gradient(at 52% 99%, hsla(0, 0%, 90%, 0.2) 0px, transparent 50%);
+}
+
+.bg-hero-dark {
+  background-image: 
+    radial-gradient(at 27% 37%, hsla(var(--primary), 0.2) 0px, transparent 50%),
+    radial-gradient(at 97% 21%, hsla(221, 44%, 25%, 0.3) 0px, transparent 50%),
+    radial-gradient(at 52% 99%, hsla(0, 0%, 10%, 0.4) 0px, transparent 50%);
+}
+
+.bg-gradient-primary {
+  background-image: linear-gradient(135deg, 
+    hsl(var(--primary)) 0%, 
+    hsl(39, 98%, 45%) 100%
+  );
+}
+
+.bg-gradient-oxford {
+  background-image: linear-gradient(135deg, 
+    hsl(221, 44%, 16%) 0%, 
+    hsl(221, 44%, 25%) 100%
+  );
+}
+
+/* Animation Utilities */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* Glass Morphism */
+.glass {
+  @apply backdrop-blur-lg bg-white/10 dark:bg-black/10 border border-white/20;
+}
+
+/* Text Utilities */
+.text-balance {
+  text-wrap: balance;
+}
+
+.text-pretty {
+  text-wrap: pretty;
+}
+
+/* Responsive Show/Hide */
+.mobile-only {
+  @apply block sm:hidden;
+}
+
+.desktop-only {
+  @apply hidden sm:block;
+}
+
+.tablet-up {
+  @apply hidden md:block;
+}
+
+.desktop-up {
+  @apply hidden lg:block;
+}
+
+/* ==========================================================================
+   5. ANIMATIONS
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(2rem); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.9); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+/* ==========================================================================
+   6. RESPONSIVE BREAKPOINT OPTIMIZATIONS
+   ========================================================================== */
+
+/* Small screens optimization */
+@media (max-width: 640px) {
+  .container {
+    padding-left: clamp(1rem, 4vw, 1.5rem);
+    padding-right: clamp(1rem, 4vw, 1.5rem);
+  }
+}
+
+/* Large screens optimization */
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1400px;
+  }
+}
+
+/* Print styles */
+@media print {
+  * {
+    @apply text-black bg-white;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

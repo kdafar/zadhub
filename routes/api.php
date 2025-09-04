@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AutomationTriggerController;
+use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\LandingPageController;
+use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\WhatsAppWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -22,3 +25,7 @@ Route::post('/wa/test-webhook', function (Request $req, WhatsAppMessageHandler $
 });
 
 Route::get('/wa/test-webhook', fn () => response('ok', 200));
+
+Route::get('/health', HealthController::class);
+Route::get('/pages/{slug}', [LandingPageController::class, 'show']);
+Route::post('/leads', [LeadController::class, 'store']);

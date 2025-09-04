@@ -61,10 +61,6 @@ class Provider extends Model implements HasMedia
         return $this->hasMany(ProviderCredential::class);
     }
 
-    
-
-    
-
     public function webhookLogs()
     {
         return $this->hasMany(ProviderWebhookLog::class);
