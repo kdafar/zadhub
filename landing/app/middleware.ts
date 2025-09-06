@@ -1,53 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Negotiator from 'negotiator';
-import { match as matchLocale } from '@formatjs/intl-localematcher';
 
-const locales = ['en', 'ar'];
-const defaultLocale = 'en';
+const LOCALES = ['en', 'ar'] as const;
+type Locale = (typeof LOCALES)[number];
 
-function getLocale(request: NextRequest): string {
-  const negotiatorHeaders: Record<string, string> = {};
-  request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
-
-  const languages = new Negotiator({ headers: negotiatorHeaders }).languages();
-  
-  return matchLocale(languages, locales, defaultLocale);
+function currentLocale(pathname: string): Locale | null {
+  return (LOCALES.find(l => pathname === `/${l}` || pathname.startsWith(`/${l}/`)) ?? null) as Locale | null;
 }
 
 export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
+  const url = request.nextUrl;
+  const desired = url.searchParams.get('locale') as Locale | null;
 
-  // ✅ ADD THIS BLOCK
-  // If the request is for the root path, always redirect to /en.
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL('/en', request.url));
-  }
+  if (desired && LOCALES.includes(desired)) {
+    const cur = currentLocale(url.pathname);
+    // compute the rest of the path after the current locale segment (if any)
+    const rest = cur ? url.pathname.slice(('/' + cur).length) : url.pathname;
 
-  // Check if there is any supported locale in the pathname.
-  const pathnameIsMissingLocale = locales.every(
-    (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
-  );
-
-  // Your existing i18n logic for all other pages
-  if (pathnameIsMissingLocale) {
-    const locale = getLocale(request);
-    
-    // NOTE: Because of the redirect above, this rewrite logic will now only apply
-    // to paths like /about, /contact etc., but not the root /.
-    if (locale === defaultLocale) {
-      return NextResponse.rewrite(
-        new URL(`/${defaultLocale}${pathname}`, request.url)
-      );
+    if (cur !== desired) {
+      url.searchParams.delete('locale'); // clean the query
+      url.pathname = `/${desired}${rest || ''}`;
+      return NextResponse.redirect(url);
     }
-
-    return NextResponse.redirect(
-      new URL(`/${locale}${pathname}`, request.url)
-    );
   }
+
+  // otherwise let it through
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
+    '/', // include root so "/?locale=ar" → "/ar"
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };

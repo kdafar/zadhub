@@ -291,10 +291,11 @@ button {
 }
 
 /* Skip to content link */
+/* Skip to content link */
 .skip-link {
-  @apply absolute left-4 top-4 z-50 px-4 py-2 bg-primary text-primary-foreground;
-  @apply rounded-md font-medium transform -translate-y-full;
-  @apply focus:translate-y-0 transition-transform;
+  @apply absolute left-4 top-4 z-[9999] px-4 py-2 bg-primary text-primary-foreground;
+  @apply rounded-lg font-medium -translate-y-full;
+  @apply focus:translate-y-0 transition-transform duration-300;
 }
 
 /* --------------------------------------------------------------------------

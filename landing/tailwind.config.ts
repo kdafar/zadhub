@@ -14,7 +14,7 @@ const config: Config = {
   theme: {
     container: { center: true, padding: "1rem" },
     extend: {
-      // 👉 Map shadcn-style tokens to your CSS variables from globals.css
+      // CSS variable-driven palette (match your globals.css tokens)
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -22,15 +22,36 @@ const config: Config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
 
-        primary: { DEFAULT: "hsl(var(--primary))", foreground: "hsl(var(--primary-foreground))" },
-        secondary: { DEFAULT: "hsl(var(--secondary))", foreground: "hsl(var(--secondary-foreground))" },
-        muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
-        accent: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(var(--accent-foreground))" },
-        destructive: { DEFAULT: "hsl(var(--destructive))", foreground: "hsl(var(--destructive-foreground))" },
-        popover: { DEFAULT: "hsl(var(--popover))", foreground: "hsl(var(--popover-foreground))" },
-        card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
 
-        // your custom palette (kept as-is)
+        // custom palette (kept as-is)
         "oxford-blue": {
           DEFAULT: "#14213d",
           100: "#04070c",
@@ -75,15 +96,16 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
 
+      // Map Tailwind font families to Next Font CSS variables
       fontFamily: {
         sans: ["var(--font-sans)", ...fontFamily.sans],
         display: ["var(--font-display)", ...fontFamily.sans],
+        arabic: ["var(--font-arabic)", ...fontFamily.sans], // used when dir=rtl
       },
     },
   },
   plugins: [
     heroui({
-      // HeroUI theme; keep this so components pick your brand colors
       themes: {
         light: {
           colors: {
@@ -94,11 +116,12 @@ const config: Config = {
             focus: "#fca311",
           },
         },
-        // (optional) add dark if you’ll use it
-        // dark: { colors: { ... } }
+        // add dark here if needed
       },
     }) as any,
     require("tailwindcss-animate"),
+    require("@tailwindcss/container-queries"),
+    require("@tailwindcss/typography"),
   ],
 };
 

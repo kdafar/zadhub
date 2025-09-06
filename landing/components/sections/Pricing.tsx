@@ -1,70 +1,126 @@
-export default function Pricing({
-  data,
-}: {
+"use client";
+
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Button } from "@heroui/react";
+import clsx from "clsx";
+
+// --- Type Definitions ---
+type Plan = {
+  name: string;
+  price_text: string;
+  summary?: string;
+  bullets?: { text: string }[];
+  cta?: { label: string; href: string };
+  featured?: boolean;
+};
+
+type PricingProps = {
   data: {
-    plans: {
-      name: string
-      price_text: string
-      summary?: string
-      bullets?: { text: string }[]
-      cta?: { label: string; href: string }
-      featured?: boolean
-    }[]
-    note?: string
-  }
-}) {
-  const plans = data?.plans || []
-  if (!plans.length) return null
+    eyebrow?: string;
+    heading?: string;
+    subheading?: string;
+    plans: Plan[];
+    note?: string;
+  };
+};
+
+// --- SVG Icon for Bullets ---
+const CheckIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="h-5 w-5 flex-shrink-0 text-primary"
+  >
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
+// --- Main Component ---
+export default function Pricing({ data }: PricingProps) {
+  const plans = data?.plans || [];
+  if (!plans.length) return null;
 
   return (
-    <section id="pricing" className="bg-slate-50 anchor-offset">
-      <div className="container-pro py-16">
-        <div className="grid gap-6 md:grid-cols-3">
-          {plans.map((p, i) => (
-            <div
+    <section id="pricing" className="bg-background text-foreground section-padding">
+      <div className="container">
+        {/* --- Section Heading --- */}
+        <div className="section-heading">
+          {data.eyebrow && <span className="eyebrow">{data.eyebrow}</span>}
+          {data.heading && <h2 className="heading">{data.heading}</h2>}
+          {data.subheading && <p className="subheading">{data.subheading}</p>}
+        </div>
+
+        {/* --- Pricing Grid --- */}
+        <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 lg:items-center">
+          {plans.map((plan, i) => (
+            <motion.div
               key={i}
-              className={`relative p-6 rounded-2xl bg-white shadow-sm border ${
-                p.featured ? 'border-emerald-300 ring-2 ring-emerald-200' : 'border-slate-200'
-              }`}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.6, delay: i * 0.1 }}
+              className={clsx(
+                "card relative flex h-full flex-col p-6",
+                plan.featured && "border-2 border-primary ring-4 ring-primary/10"
+              )}
             >
-              {p.featured && (
-                <div className="absolute -top-3 right-6 text-xs px-2 py-1 rounded-full bg-emerald-600 text-white shadow">
+              {plan.featured && (
+                <div className="badge absolute -top-4 right-6 bg-primary text-primary-foreground shadow-lg">
                   Most Popular
                 </div>
               )}
 
-              <div className="flex items-baseline justify-between">
-                <h3 className="text-xl font-extrabold">{p.name}</h3>
-                <div className="text-emerald-700 font-bold">{p.price_text}</div>
+              {/* Plan Header */}
+              <div className="mb-5">
+                <h3 className="text-2xl font-bold">{plan.name}</h3>
+                <p className="mt-1 text-4xl font-extrabold">{plan.price_text}</p>
+                {plan.summary && (
+                  <p className="mt-2 text-muted-foreground">{plan.summary}</p>
+                )}
               </div>
 
-              {p.summary && <p className="text-slate-600 mt-2 text-sm">{p.summary}</p>}
-
-              <ul className="mt-4 space-y-2">
-                {(p.bullets || []).map((b, j) => (
-                  <li key={j} className="flex gap-2 text-sm">
-                    <span>✔️</span>
-                    <span>{b.text}</span>
+              {/* Plan Features */}
+              <ul className="space-y-3">
+                {(plan.bullets || []).map((bullet, j) => (
+                  <li key={j} className="flex items-start gap-3">
+                    <CheckIcon />
+                    <span>{bullet.text}</span>
                   </li>
                 ))}
               </ul>
 
-              {p.cta?.label && (
-                <a
-                  href={p.cta.href || '#lead'}
-                  className={`mt-6 inline-block px-5 py-3 rounded-xl font-semibold hover:opacity-90 ${
-                    p.featured ? 'bg-emerald-600 text-white' : 'border'
-                  }`}
-                >
-                  {p.cta.label}
-                </a>
+              {/* Plan CTA */}
+              {plan.cta?.label && (
+                <div className="mt-auto pt-8">
+                  <Button
+                    as={Link}
+                    href={plan.cta.href || "#lead"}
+                    className={clsx(
+                      "btn btn-lg w-full",
+                      plan.featured ? "btn-primary" : "btn-outline"
+                    )}
+                  >
+                    {plan.cta.label}
+                  </Button>
+                </div>
               )}
-            </div>
+            </motion.div>
           ))}
         </div>
 
-        {data.note && <p className="text-xs text-slate-500 mt-6">{data.note}</p>}
+        {/* Optional Note */}
+        {data.note && (
+          <p className="mt-8 text-center text-sm text-muted-foreground">{data.note}</p>
+        )}
       </div>
     </section>
-  )
+  );
 }
